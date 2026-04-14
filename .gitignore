@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+header_tool_settings.json
+sample_run/
+Logos/
+PDFs/
+OutputFinal/
