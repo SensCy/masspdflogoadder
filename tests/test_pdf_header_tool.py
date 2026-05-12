@@ -24,7 +24,7 @@ class PdfHeaderToolTests(unittest.TestCase):
     def test_process_batch_creates_one_pdf_per_logo(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            source_pdf = temp_path / "source.pdf"
+            source_pdf = temp_path / "UserAccessControlPolicy.pdf"
             logo_dir = temp_path / "logos"
             output_dir = temp_path / "output"
             logo_dir.mkdir()
@@ -36,7 +36,11 @@ class PdfHeaderToolTests(unittest.TestCase):
             document.save(source_pdf)
             document.close()
 
-            for name, color in [("alpha.png", "red"), ("beta.jpg", "blue"), ("gamma.png", "green")]:
+            for name, color in [
+                ("Google.png", "red"),
+                ("AmazonWebService.jpg", "blue"),
+                ("Gamma.png", "green"),
+            ]:
                 image_path = logo_dir / name
                 Image.new("RGB", (160, 80), color=color).save(image_path)
 
@@ -48,6 +52,14 @@ class PdfHeaderToolTests(unittest.TestCase):
             )
 
             self.assertEqual(len(results), 3)
+            self.assertEqual(
+                {output_pdf.name for output_pdf in results},
+                {
+                    "AmazonWebService_UserAccessControlPolicy.pdf",
+                    "Gamma_UserAccessControlPolicy.pdf",
+                    "Google_UserAccessControlPolicy.pdf",
+                },
+            )
             for output_pdf in results:
                 self.assertTrue(output_pdf.exists(), msg=f"Expected output file: {output_pdf}")
                 stamped_document = fitz.open(output_pdf)

@@ -48,13 +48,20 @@ python SensCyPDFLOGOapp.py
 Generated files use this pattern:
 
 ```text
-sourcePdfName__logoName.pdf
+logoName_sourcePdfName.pdf
 ```
 
 Preview files use this pattern:
 
 ```text
-preview__sourcePdfName__logoName.pdf
+preview_logoName_sourcePdfName.pdf
+```
+
+Example:
+
+```text
+Google_UserAccessControlPolicy.pdf
+AmazonWebService_UserAccessControlPolicy.pdf
 ```
 
 If a file name already exists, the tool adds a numeric suffix so it does not overwrite the earlier file.

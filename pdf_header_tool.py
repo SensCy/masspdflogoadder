@@ -78,9 +78,9 @@ def build_output_path(
     logo_file = Path(logo_path)
     output_folder = Path(output_dir)
 
-    base_name = f"{_slugify(pdf_file.stem)}__{_slugify(logo_file.stem)}"
+    base_name = f"{_slugify(logo_file.stem)}_{_slugify(pdf_file.stem)}"
     if prefix:
-        base_name = f"{_slugify(prefix)}__{base_name}"
+        base_name = f"{_slugify(prefix)}_{base_name}"
 
     return _next_available_path(output_folder / f"{base_name}.pdf")
 
