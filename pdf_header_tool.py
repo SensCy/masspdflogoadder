@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 import re
@@ -48,6 +49,34 @@ def list_logo_files(logos_dir: str | Path) -> list[Path]:
         for path in directory.iterdir()
         if path.is_file() and path.suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS
     )
+
+
+def normalize_pdf_paths(pdf_paths: Sequence[str | Path]) -> list[Path]:
+    normalized_paths: list[Path] = []
+    for pdf_path in pdf_paths:
+        path = Path(pdf_path)
+        if not path.exists() or path.suffix.lower() != ".pdf":
+            raise FileNotFoundError(f"PDF not found or invalid: {path}")
+        normalized_paths.append(path)
+
+    if not normalized_paths:
+        raise ValueError("No PDF files were selected.")
+
+    return normalized_paths
+
+
+def normalize_logo_paths(logo_paths: Sequence[str | Path]) -> list[Path]:
+    normalized_paths: list[Path] = []
+    for logo_path in logo_paths:
+        path = Path(logo_path)
+        if not path.exists() or path.suffix.lower() not in SUPPORTED_IMAGE_EXTENSIONS:
+            raise FileNotFoundError(f"Logo file not found or invalid: {path}")
+        normalized_paths.append(path)
+
+    if not normalized_paths:
+        raise ValueError("No PNG/JPG logo files were selected.")
+
+    return normalized_paths
 
 
 def _slugify(value: str) -> str:
@@ -184,28 +213,64 @@ def stamp_pdf_with_logo(
     return destination_pdf
 
 
-def process_batch(
-    pdf_path: str | Path,
-    logos_dir: str | Path,
+def process_pdf_logo_pairs(
+    pdf_paths: Sequence[str | Path],
+    logo_paths: Sequence[str | Path],
     output_dir: str | Path,
     placement: PlacementConfig,
-    progress_callback: Callable[[int, int, Path, Path], None] | None = None,
+    progress_callback: Callable[[int, int, Path, Path, Path], None] | None = None,
 ) -> list[Path]:
-    logo_files = list_logo_files(logos_dir)
-    if not logo_files:
-        raise ValueError("No PNG/JPG logo files were found in the selected folder.")
+    normalized_pdfs = normalize_pdf_paths(pdf_paths)
+    normalized_logos = normalize_logo_paths(logo_paths)
 
     output_folder = Path(output_dir)
     output_folder.mkdir(parents=True, exist_ok=True)
 
     results: list[Path] = []
-    total = len(logo_files)
-    for index, logo_file in enumerate(logo_files, start=1):
-        output_path = build_output_path(pdf_path, logo_file, output_folder)
-        stamped_pdf = stamp_pdf_with_logo(pdf_path, logo_file, output_path, placement)
-        results.append(stamped_pdf)
+    total = len(normalized_pdfs) * len(normalized_logos)
+    current = 0
 
-        if progress_callback:
-            progress_callback(index, total, logo_file, stamped_pdf)
+    for pdf_path in normalized_pdfs:
+        for logo_path in normalized_logos:
+            current += 1
+            output_path = build_output_path(pdf_path, logo_path, output_folder)
+            stamped_pdf = stamp_pdf_with_logo(pdf_path, logo_path, output_path, placement)
+            results.append(stamped_pdf)
+
+            if progress_callback:
+                progress_callback(current, total, pdf_path, logo_path, stamped_pdf)
 
     return results
+
+
+def process_batch(
+    pdf_path: str | Path,
+    logos_dir: str | Path,
+    output_dir: str | Path,
+    placement: PlacementConfig,
+    progress_callback: Callable[[int, int, Path, Path, Path], None] | None = None,
+) -> list[Path]:
+    logo_files = list_logo_files(logos_dir)
+    return process_pdf_logo_pairs(
+        [pdf_path],
+        logo_files,
+        output_dir,
+        placement,
+        progress_callback=progress_callback,
+    )
+
+
+def process_pdfs_with_logo(
+    pdf_paths: Sequence[str | Path],
+    logo_path: str | Path,
+    output_dir: str | Path,
+    placement: PlacementConfig,
+    progress_callback: Callable[[int, int, Path, Path, Path], None] | None = None,
+) -> list[Path]:
+    return process_pdf_logo_pairs(
+        pdf_paths,
+        [logo_path],
+        output_dir,
+        placement,
+        progress_callback=progress_callback,
+    )

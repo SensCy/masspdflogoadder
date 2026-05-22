@@ -1,16 +1,21 @@
 # PDF Header Batch Tool
 
-This desktop tool takes one source PDF and a folder of logo images, then creates one output PDF per logo with that image placed in the header area on every page.
+This desktop tool takes one or more source PDFs and a folder of logo images, then creates stamped output PDFs with the image placed in the header area on every page.
 
-If your logo folder contains 50 files, the tool will create 50 PDFs.
+Examples:
+
+- 1 PDF + 50 logos = 50 output PDFs
+- 10 PDFs + 1 selected logo = 10 output PDFs
+- 10 PDFs + 50 logos = 500 output PDFs
 
 ## What It Does
 
-- Select one source PDF.
+- Select one or more source PDFs.
 - Select a folder containing `.png`, `.jpg`, or `.jpeg` logo files.
+- Choose whether to use all logos in the folder or just the highlighted logo.
 - Choose the header placement and logo size once.
-- Optionally create a single preview PDF before running the full batch.
-- Generate one stamped PDF per logo.
+- Optionally create a single preview PDF using the highlighted PDF and highlighted logo.
+- Generate one stamped PDF for every selected PDF/logo combination.
 
 ## Install
 
@@ -31,9 +36,12 @@ python SensCyPDFLOGOapp.py
 1. Choose the source PDF.
 2. Choose the folder that stores your logos.
 3. Choose an output folder.
-4. Set the header placement.
-5. Click `Create Preview PDF` to test placement with one logo.
-6. Click `Generate All PDFs` to create one file per logo.
+4. Pick a batch mode:
+   - `Apply every logo in the folder to every selected PDF`
+   - `Apply only the highlighted logo to every selected PDF`
+5. Set the header placement.
+6. Click `Create Preview PDF` to test the highlighted PDF/logo pair.
+7. Click `Generate PDFs` to create the full batch.
 
 ## Placement Notes
 

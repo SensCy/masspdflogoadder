@@ -7,10 +7,23 @@ import unittest
 import fitz
 from PIL import Image
 
-from pdf_header_tool import PlacementConfig, list_logo_files, process_batch
+from pdf_header_tool import (
+    PlacementConfig,
+    list_logo_files,
+    process_batch,
+    process_pdfs_with_logo,
+)
 
 
 class PdfHeaderToolTests(unittest.TestCase):
+    def _create_pdf(self, path: Path, title: str, page_count: int = 2) -> None:
+        document = fitz.open()
+        for page_number in range(page_count):
+            page = document.new_page()
+            page.insert_text((72, 72), f"{title} page {page_number + 1}")
+        document.save(path)
+        document.close()
+
     def test_list_logo_files_filters_supported_extensions(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
@@ -29,12 +42,7 @@ class PdfHeaderToolTests(unittest.TestCase):
             output_dir = temp_path / "output"
             logo_dir.mkdir()
 
-            document = fitz.open()
-            for page_number in range(2):
-                page = document.new_page()
-                page.insert_text((72, 72), f"Page {page_number + 1}")
-            document.save(source_pdf)
-            document.close()
+            self._create_pdf(source_pdf, "UserAccessControlPolicy")
 
             for name, color in [
                 ("Google.png", "red"),
@@ -64,6 +72,44 @@ class PdfHeaderToolTests(unittest.TestCase):
                 self.assertTrue(output_pdf.exists(), msg=f"Expected output file: {output_pdf}")
                 stamped_document = fitz.open(output_pdf)
                 self.assertEqual(stamped_document.page_count, 2)
+                for page in stamped_document:
+                    self.assertGreaterEqual(len(page.get_images(full=True)), 1)
+                stamped_document.close()
+
+    def test_process_pdfs_with_logo_creates_one_pdf_per_source_pdf(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            output_dir = temp_path / "output"
+            logo_path = temp_path / "Google.png"
+            pdf_paths = [
+                temp_path / "AccessPolicy.pdf",
+                temp_path / "IncidentResponse.pdf",
+            ]
+
+            for pdf_path in pdf_paths:
+                self._create_pdf(pdf_path, pdf_path.stem, page_count=3)
+
+            Image.new("RGB", (160, 80), color="red").save(logo_path)
+
+            results = process_pdfs_with_logo(
+                pdf_paths,
+                logo_path,
+                output_dir,
+                PlacementConfig(anchor="center", y_offset_in=0.2, box_width_in=1.8, box_height_in=0.7),
+            )
+
+            self.assertEqual(len(results), 2)
+            self.assertEqual(
+                {output_pdf.name for output_pdf in results},
+                {
+                    "Google_AccessPolicy.pdf",
+                    "Google_IncidentResponse.pdf",
+                },
+            )
+            for output_pdf in results:
+                self.assertTrue(output_pdf.exists(), msg=f"Expected output file: {output_pdf}")
+                stamped_document = fitz.open(output_pdf)
+                self.assertEqual(stamped_document.page_count, 3)
                 for page in stamped_document:
                     self.assertGreaterEqual(len(page.get_images(full=True)), 1)
                 stamped_document.close()
