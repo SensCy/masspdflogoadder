@@ -1,0 +1,107 @@
+.clientspreadsheet-layout {
+    display: grid;
+    grid-template-columns: minmax(360px, 1fr) minmax(320px, 0.9fr);
+    gap: 1.5rem;
+    align-items: start;
+    margin-top: 1rem;
+}
+
+.clientspreadsheet-panel {
+    border: 1px solid #cfd8e3;
+    border-radius: 8px;
+    padding: 1.25rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.clientspreadsheet-panel h3 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+}
+
+.clientspreadsheet-manage-link,
+.clientspreadsheet-download,
+.clientspreadsheet-confirm-actions {
+    margin: 1rem 0;
+}
+
+.clientspreadsheet-upload-panel .mform .form-group.row,
+.clientspreadsheet-upload-panel .mform .fitem.row {
+    display: block;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.clientspreadsheet-upload-panel .mform .col-form-label,
+.clientspreadsheet-upload-panel .mform .form-label-addon,
+.clientspreadsheet-upload-panel .mform .felement,
+.clientspreadsheet-upload-panel .mform .col-md-3,
+.clientspreadsheet-upload-panel .mform .col-md-9 {
+    flex: none;
+    max-width: 100%;
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: left;
+}
+
+.clientspreadsheet-upload-panel .mform .form-label-addon {
+    display: inline-flex;
+    width: auto;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+}
+
+.clientspreadsheet-upload-panel .mform .filepicker,
+.clientspreadsheet-upload-panel .mform .filemanager,
+.clientspreadsheet-upload-panel .mform .fp-restrictions {
+    width: 100%;
+    max-width: 100%;
+}
+
+.clientspreadsheet-upload-panel .mform .fp-navbar,
+.clientspreadsheet-upload-panel .mform .fp-content {
+    border-color: #c9d4df;
+}
+
+.clientspreadsheet-upload-panel .mform .fp-content {
+    min-height: 108px;
+}
+
+.clientspreadsheet-upload-panel .mform .fitem_actionbuttons .col-md-3 {
+    display: none;
+}
+
+.clientspreadsheet-upload-panel .mform .fitem_actionbuttons .col-md-9 {
+    margin-left: 0;
+}
+
+.clientspreadsheet-upload-panel .mform .fitem_actionbuttons,
+.clientspreadsheet-upload-panel .mform .fdescription.required {
+    margin-top: 1rem;
+}
+
+.clientspreadsheet-example-table {
+    margin-bottom: 1rem;
+}
+
+.clientspreadsheet-example-table th {
+    white-space: nowrap;
+}
+
+.clientspreadsheet-example-table th,
+.clientspreadsheet-example-table td,
+.clientspreadsheet-submissions th,
+.clientspreadsheet-submissions td {
+    vertical-align: top;
+}
+
+.clientspreadsheet-error-list {
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 760px) {
+    .clientspreadsheet-layout {
+        grid-template-columns: 1fr;
+    }
+}

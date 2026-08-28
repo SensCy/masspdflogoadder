@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-label="Client spreadsheet">
+  <rect x="4" y="3" width="16" height="18" rx="2" fill="#f8fafc" stroke="#2f5f8f" stroke-width="1.5"/>
+  <path d="M7 8h10M7 12h10M7 16h10" stroke="#2f5f8f" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M10 6v12M14 6v12" stroke="#7b8fa8" stroke-width="1.1" stroke-linecap="round"/>
+</svg>
