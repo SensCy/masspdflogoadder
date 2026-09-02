@@ -85,6 +85,12 @@ if ($mform->is_cancelled()) {
             );
 
             $transaction->allow_commit();
+            \mod_clientspreadsheet\local\spreadsheet_helper::send_submission_notification(
+                $clientspreadsheet,
+                $course,
+                $cm,
+                $submission
+            );
 
             redirect(new moodle_url('/mod/clientspreadsheet/submitted.php', [
                 'id' => $cm->id,

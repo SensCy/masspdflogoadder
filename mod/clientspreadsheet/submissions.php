@@ -32,6 +32,7 @@ if (!is_siteadmin()) {
 }
 
 $url = new moodle_url('/mod/clientspreadsheet/submissions.php', ['id' => $cm->id]);
+\mod_clientspreadsheet\local\spreadsheet_helper::cleanup_completed_submissions();
 
 if ($action !== '') {
     require_sesskey();
@@ -58,7 +59,10 @@ if ($action !== '') {
         echo $OUTPUT->header();
         echo $OUTPUT->heading(get_string('confirmcompleteheading', 'clientspreadsheet'));
         echo $OUTPUT->confirm(
-            get_string('confirmcompletemessage', 'clientspreadsheet', s($submission->filename)),
+            get_string('confirmcompletemessage', 'clientspreadsheet', (object) [
+                'filename' => s($submission->filename),
+                'days' => \mod_clientspreadsheet\local\spreadsheet_helper::get_retention_days($clientspreadsheet),
+            ]),
             new moodle_url($url, [
                 'action' => 'complete',
                 'submission' => $submission->id,
@@ -70,10 +74,9 @@ if ($action !== '') {
         exit;
     }
 
-    $transaction = $DB->start_delegated_transaction();
-    get_file_storage()->delete_area_files($context->id, 'mod_clientspreadsheet', 'submission', $submission->id);
-    $DB->delete_records('clientspreadsheet_submission', ['id' => $submission->id]);
-    $transaction->allow_commit();
+    if ($submission->status !== \mod_clientspreadsheet\local\spreadsheet_helper::STATUS_COMPLETED) {
+        \mod_clientspreadsheet\local\spreadsheet_helper::complete_submission($submission);
+    }
 
     redirect($url, get_string('submissioncompleted', 'clientspreadsheet'));
 }
@@ -87,9 +90,16 @@ echo $OUTPUT->header();
 echo $OUTPUT->heading(format_string($clientspreadsheet->name));
 echo $OUTPUT->heading(get_string('submissions', 'clientspreadsheet'), 3);
 
-$records = $DB->get_records('clientspreadsheet_submission', [
-    'clientspreadsheetid' => $clientspreadsheet->id,
-], 'timecreated DESC, id DESC');
+$records = $DB->get_records_sql(
+    "SELECT *
+       FROM {clientspreadsheet_submission}
+      WHERE clientspreadsheetid = :clientspreadsheetid
+      ORDER BY CASE WHEN status = :completed THEN 1 ELSE 0 END ASC, timecreated DESC, id DESC",
+    [
+        'clientspreadsheetid' => $clientspreadsheet->id,
+        'completed' => \mod_clientspreadsheet\local\spreadsheet_helper::STATUS_COMPLETED,
+    ]
+);
 
 if (empty($records)) {
     echo $OUTPUT->notification(get_string('nosubmissions', 'clientspreadsheet'), 'info');
@@ -105,25 +115,53 @@ $table->head = [
     get_string('submitted', 'clientspreadsheet'),
     get_string('client', 'clientspreadsheet'),
     get_string('filename', 'clientspreadsheet'),
+    get_string('status', 'clientspreadsheet'),
+    get_string('reviewedby', 'clientspreadsheet'),
+    get_string('removeafter', 'clientspreadsheet'),
     get_string('actions'),
 ];
 
 foreach ($records as $record) {
     $user = $users[$record->userid] ?? null;
+    $reviewer = !empty($record->reviewerid) && isset($users[$record->reviewerid]) ? $users[$record->reviewerid] : null;
     $downloadlink = \mod_clientspreadsheet\local\spreadsheet_helper::get_submission_download_link($context, $record);
+    $iscompleted = $record->status === \mod_clientspreadsheet\local\spreadsheet_helper::STATUS_COMPLETED;
 
-    $actions = html_writer::link(new moodle_url($url, [
-        'action' => 'confirmcomplete',
-        'submission' => $record->id,
-        'sesskey' => sesskey(),
-    ]), get_string('complete', 'clientspreadsheet'), ['class' => 'btn btn-sm btn-success']);
+    if ($iscompleted) {
+        $actions = html_writer::span(get_string('noactionneeded', 'clientspreadsheet'), 'text-muted');
+        $reviewedby = $reviewer ? fullname($reviewer) . html_writer::empty_tag('br') . userdate($record->timereviewed) : '-';
+        $removeafter = userdate(
+            $record->timereviewed
+                + (\mod_clientspreadsheet\local\spreadsheet_helper::get_retention_days($clientspreadsheet) * DAYSECS)
+        );
+    } else {
+        $actions = html_writer::link(new moodle_url($url, [
+            'action' => 'confirmcomplete',
+            'submission' => $record->id,
+            'sesskey' => sesskey(),
+        ]), get_string('complete', 'clientspreadsheet'), ['class' => 'btn btn-sm btn-success']);
+        $reviewedby = '-';
+        $removeafter = '-';
+    }
 
-    $table->data[] = [
+    $row = new html_table_row([
         userdate($record->timecreated),
         $user ? fullname($user) . html_writer::empty_tag('br') . s($user->email) : get_string('unknownuser', 'clientspreadsheet'),
         $downloadlink,
+        html_writer::span(
+            get_string('status_' . $record->status, 'clientspreadsheet'),
+            $iscompleted ? 'badge badge-danger' : 'badge badge-info'
+        ),
+        $reviewedby,
+        $removeafter,
         $actions,
-    ];
+    ]);
+
+    if ($iscompleted) {
+        $row->attributes['class'] = 'clientspreadsheet-completed-row';
+    }
+
+    $table->data[] = $row;
 }
 
 echo html_writer::table($table);

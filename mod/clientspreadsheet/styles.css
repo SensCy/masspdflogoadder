@@ -96,6 +96,21 @@
     vertical-align: top;
 }
 
+.clientspreadsheet-submissions tr.clientspreadsheet-completed-row td {
+    background: #fdecec;
+    border-top-color: #f3b3b3;
+}
+
+.clientspreadsheet-submissions tr.clientspreadsheet-completed-row:hover td {
+    background: #fbdede;
+}
+
+.clientspreadsheet-submissions .badge {
+    font-size: 0.82rem;
+    line-height: 1.2;
+    padding: 0.28rem 0.45rem;
+}
+
 .clientspreadsheet-error-list {
     margin-bottom: 1rem;
 }

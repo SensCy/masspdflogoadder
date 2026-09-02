@@ -54,6 +54,10 @@ function clientspreadsheet_add_instance($data, $mform = null): int {
     $data->requiredcolumns = \mod_clientspreadsheet\local\spreadsheet_helper::normalise_required_columns_text(
         $data->requiredcolumns ?? ''
     );
+    $data->notificationemail = clean_param($data->notificationemail ?? '', PARAM_EMAIL);
+    $data->completedretentiondays = \mod_clientspreadsheet\local\spreadsheet_helper::normalise_retention_days(
+        $data->completedretentiondays ?? 30
+    );
 
     return $DB->insert_record('clientspreadsheet', $data);
 }
@@ -72,6 +76,10 @@ function clientspreadsheet_update_instance($data, $mform = null): bool {
     $data->timemodified = time();
     $data->requiredcolumns = \mod_clientspreadsheet\local\spreadsheet_helper::normalise_required_columns_text(
         $data->requiredcolumns ?? ''
+    );
+    $data->notificationemail = clean_param($data->notificationemail ?? '', PARAM_EMAIL);
+    $data->completedretentiondays = \mod_clientspreadsheet\local\spreadsheet_helper::normalise_retention_days(
+        $data->completedretentiondays ?? 30
     );
 
     return $DB->update_record('clientspreadsheet', $data);

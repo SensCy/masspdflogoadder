@@ -7,7 +7,7 @@
 // (at your option) any later version.
 
 /**
- * Version details for the Client spreadsheet activity module.
+ * Scheduled tasks for the Client spreadsheet activity module.
  *
  * @package    mod_clientspreadsheet
  * @copyright  2026
@@ -16,8 +16,14 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'mod_clientspreadsheet';
-$plugin->version = 2026090200;
-$plugin->requires = 2022112800;
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.2.0';
+$tasks = [
+    [
+        'classname' => '\mod_clientspreadsheet\task\cleanup_completed_submissions',
+        'blocking' => 0,
+        'minute' => 'R',
+        'hour' => '2',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
+    ],
+];

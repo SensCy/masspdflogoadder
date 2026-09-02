@@ -26,6 +26,11 @@ class provider implements \core_privacy\local\metadata\provider {
      * @return \core_privacy\local\metadata\collection
      */
     public static function get_metadata(\core_privacy\local\metadata\collection $collection): \core_privacy\local\metadata\collection {
+        $collection->add_database_table('clientspreadsheet', [
+            'notificationemail' => 'privacy:metadata:clientspreadsheet:notificationemail',
+            'completedretentiondays' => 'privacy:metadata:clientspreadsheet:completedretentiondays',
+        ], 'privacy:metadata:clientspreadsheet');
+
         $collection->add_database_table('clientspreadsheet_submission', [
             'clientspreadsheetid' => 'privacy:metadata:clientspreadsheet_submission:clientspreadsheetid',
             'userid' => 'privacy:metadata:clientspreadsheet_submission:userid',
