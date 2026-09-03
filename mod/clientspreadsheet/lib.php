@@ -105,6 +105,7 @@ function clientspreadsheet_delete_instance($id): bool {
     }
 
     $DB->delete_records('clientspreadsheet_submission', ['clientspreadsheetid' => $id]);
+    $DB->delete_records('clientspreadsheet_removal', ['clientspreadsheetid' => $id]);
     $DB->delete_records('clientspreadsheet', ['id' => $id]);
 
     return true;

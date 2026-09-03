@@ -14,6 +14,41 @@
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
+.clientspreadsheet-console {
+    max-width: 1180px;
+}
+
+.clientspreadsheet-section {
+    margin: 1.5rem 0 2rem;
+}
+
+.clientspreadsheet-section h3 {
+    color: #3f4752;
+    font-size: 1.45rem;
+    font-weight: 400;
+    margin-bottom: 0.65rem;
+}
+
+.clientspreadsheet-muted,
+.clientspreadsheet-table-count,
+.clientspreadsheet-requester-email {
+    color: #69727d;
+}
+
+.clientspreadsheet-table-count {
+    margin-top: 0.65rem;
+}
+
+.clientspreadsheet-user-table th,
+.clientspreadsheet-user-table td {
+    vertical-align: middle;
+}
+
+.clientspreadsheet-user-table td:last-child,
+.clientspreadsheet-user-table th:last-child {
+    width: 145px;
+}
+
 .clientspreadsheet-panel h3 {
     margin-top: 0;
     margin-bottom: 0.75rem;
@@ -85,6 +120,63 @@
     margin-bottom: 1rem;
 }
 
+.clientspreadsheet-request-group {
+    border-top: 1px solid #d8dde4;
+    padding: 1rem 0;
+}
+
+.clientspreadsheet-request-group:first-of-type {
+    border-top: 0;
+}
+
+.clientspreadsheet-requester {
+    color: #3f4752;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.clientspreadsheet-request-item {
+    background: #f8fafc;
+    border: 1px solid #d8dde4;
+    border-radius: 6px;
+    margin-top: 0.75rem;
+    padding: 0.85rem;
+}
+
+.clientspreadsheet-request-type {
+    margin-right: 0.5rem;
+}
+
+.clientspreadsheet-request-time {
+    color: #69727d;
+    font-size: 0.88rem;
+}
+
+.clientspreadsheet-requested-items {
+    margin: 0.6rem 0 0;
+    padding-left: 1.1rem;
+}
+
+.clientspreadsheet-admin-split {
+    display: grid;
+    grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
+    gap: 1.25rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.clientspreadsheet-admin-panel {
+    overflow-x: auto;
+}
+
+.clientspreadsheet-addition-panel {
+    border-top: 4px solid #0f6c8f;
+}
+
+.clientspreadsheet-removal-panel {
+    border-top: 4px solid #b23b3b;
+}
+
 .clientspreadsheet-example-table th {
     white-space: nowrap;
 }
@@ -117,6 +209,10 @@
 
 @media (max-width: 760px) {
     .clientspreadsheet-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .clientspreadsheet-admin-split {
         grid-template-columns: 1fr;
     }
 }

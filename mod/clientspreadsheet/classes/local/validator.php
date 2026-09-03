@@ -34,6 +34,7 @@ class validator {
             'valid' => false,
             'errors' => [],
             'headers' => [],
+            'items' => [],
             'rowcount' => 0,
         ];
 
@@ -112,6 +113,9 @@ class validator {
         }
 
         $result->valid = empty($result->errors);
+        if ($result->valid) {
+            $result->items = $this->build_requested_items($headers, $datarows, $requiredcolumns);
+        }
 
         return $result;
     }
@@ -401,6 +405,40 @@ class validator {
         }
 
         return implode('/', $parts);
+    }
+
+    /**
+     * Builds displayable requested-user rows from a validated spreadsheet.
+     *
+     * @param string[] $headers Header row.
+     * @param array $datarows Data rows.
+     * @param string[] $requiredcolumns Required columns.
+     * @return array
+     */
+    private function build_requested_items(array $headers, array $datarows, array $requiredcolumns): array {
+        $positions = [];
+        foreach ($headers as $index => $header) {
+            $positions[$this->normalise_header($header)] = $index;
+        }
+
+        $items = [];
+        foreach ($datarows as $row) {
+            $item = [];
+            foreach ($requiredcolumns as $required) {
+                $normalised = $this->normalise_header($required);
+                if (!isset($positions[$normalised])) {
+                    continue;
+                }
+
+                $item[$required] = $this->clean_cell($row[$positions[$normalised]] ?? '');
+            }
+
+            if (!empty($item)) {
+                $items[] = $item;
+            }
+        }
+
+        return $items;
     }
 
     /**

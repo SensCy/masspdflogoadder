@@ -33,16 +33,29 @@ class provider implements \core_privacy\local\metadata\provider {
 
         $collection->add_database_table('clientspreadsheet_submission', [
             'clientspreadsheetid' => 'privacy:metadata:clientspreadsheet_submission:clientspreadsheetid',
+            'cohortid' => 'privacy:metadata:clientspreadsheet_submission:cohortid',
             'userid' => 'privacy:metadata:clientspreadsheet_submission:userid',
             'filename' => 'privacy:metadata:clientspreadsheet_submission:filename',
             'filesize' => 'privacy:metadata:clientspreadsheet_submission:filesize',
             'mimetype' => 'privacy:metadata:clientspreadsheet_submission:mimetype',
             'status' => 'privacy:metadata:clientspreadsheet_submission:status',
             'validationmessage' => 'privacy:metadata:clientspreadsheet_submission:validationmessage',
+            'requesteditems' => 'privacy:metadata:clientspreadsheet_submission:requesteditems',
             'reviewerid' => 'privacy:metadata:clientspreadsheet_submission:reviewerid',
             'timecreated' => 'privacy:metadata:clientspreadsheet_submission:timecreated',
             'timereviewed' => 'privacy:metadata:clientspreadsheet_submission:timereviewed',
         ], 'privacy:metadata:clientspreadsheet_submission');
+
+        $collection->add_database_table('clientspreadsheet_removal', [
+            'clientspreadsheetid' => 'privacy:metadata:clientspreadsheet_removal:clientspreadsheetid',
+            'userid' => 'privacy:metadata:clientspreadsheet_removal:userid',
+            'targetuserid' => 'privacy:metadata:clientspreadsheet_removal:targetuserid',
+            'cohortid' => 'privacy:metadata:clientspreadsheet_removal:cohortid',
+            'status' => 'privacy:metadata:clientspreadsheet_removal:status',
+            'reviewerid' => 'privacy:metadata:clientspreadsheet_removal:reviewerid',
+            'timecreated' => 'privacy:metadata:clientspreadsheet_removal:timecreated',
+            'timereviewed' => 'privacy:metadata:clientspreadsheet_removal:timereviewed',
+        ], 'privacy:metadata:clientspreadsheet_removal');
 
         $collection->add_subsystem_link('core_files', [], 'privacy:metadata:core_files');
 

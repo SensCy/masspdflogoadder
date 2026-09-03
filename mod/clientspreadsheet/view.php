@@ -56,17 +56,20 @@ if ($mform->is_cancelled()) {
         if (!$result->valid) {
             $validationerrors = $result->errors;
         } else {
+            $cohortids = \mod_clientspreadsheet\local\spreadsheet_helper::get_user_cohort_ids($USER->id);
             $transaction = $DB->start_delegated_transaction();
             $time = time();
             $submission = (object) [
                 'clientspreadsheetid' => $clientspreadsheet->id,
                 'course' => $course->id,
+                'cohortid' => !empty($cohortids) ? (int) $cohortids[0] : 0,
                 'userid' => $USER->id,
                 'filename' => $draftfile->get_filename(),
                 'filesize' => $draftfile->get_filesize(),
                 'mimetype' => $draftfile->get_mimetype(),
                 'status' => \mod_clientspreadsheet\local\spreadsheet_helper::STATUS_SUBMITTED,
                 'validationmessage' => get_string('validationpassedmessage', 'clientspreadsheet', $result->rowcount),
+                'requesteditems' => \mod_clientspreadsheet\local\spreadsheet_helper::encode_requested_items($result->items),
                 'reviewerid' => 0,
                 'timereviewed' => 0,
                 'timecreated' => $time,
@@ -111,6 +114,7 @@ if (trim($clientspreadsheet->intro ?? '') !== '') {
     );
 }
 
+$cansubmit = has_capability('mod/clientspreadsheet:submit', $context);
 if (is_siteadmin()) {
     echo html_writer::div(
         html_writer::link(
@@ -122,16 +126,81 @@ if (is_siteadmin()) {
     );
 }
 
-if (!empty($validationerrors)) {
-    echo $OUTPUT->notification(get_string('validationfailed', 'clientspreadsheet'), 'error');
-    echo html_writer::alist(array_map('s', $validationerrors), ['class' => 'clientspreadsheet-error-list']);
-}
+$cohortusers = \mod_clientspreadsheet\local\spreadsheet_helper::get_cohort_users_for_user($USER->id);
+$pendingremovals = \mod_clientspreadsheet\local\spreadsheet_helper::get_pending_removal_targets(
+    $clientspreadsheet->id,
+    array_keys($cohortusers)
+);
+$pendinggroups = \mod_clientspreadsheet\local\spreadsheet_helper::get_pending_requests_for_user($clientspreadsheet, $USER->id);
 
+echo html_writer::start_div('clientspreadsheet-console');
+
+echo html_writer::start_tag('section', ['class' => 'clientspreadsheet-section clientspreadsheet-active-users']);
+echo $OUTPUT->heading(get_string('activeusers', 'clientspreadsheet'), 3);
+echo html_writer::tag('p', get_string('activeusersintro', 'clientspreadsheet'), ['class' => 'clientspreadsheet-muted']);
+
+if (empty($cohortusers)) {
+    echo $OUTPUT->notification(get_string('nocohortusers', 'clientspreadsheet'), 'info');
+} else {
+    $table = new html_table();
+    $table->attributes['class'] = 'generaltable clientspreadsheet-user-table';
+    $table->head = [
+        get_string('firstname'),
+        get_string('lastname'),
+        get_string('email'),
+        get_string('actions'),
+    ];
+
+    foreach ($cohortusers as $cohortuser) {
+        if ((int) $cohortuser->id === (int) $USER->id) {
+            $action = html_writer::span(get_string('currentuser', 'clientspreadsheet'), 'badge badge-secondary');
+        } else if (is_siteadmin($cohortuser->id)) {
+            $action = html_writer::span(get_string('admin'), 'badge badge-primary');
+        } else if (isset($pendingremovals[$cohortuser->id])) {
+            $action = html_writer::span(get_string('removalpending', 'clientspreadsheet'), 'badge badge-warning');
+        } else if ($cansubmit) {
+            $action = html_writer::link(
+                new moodle_url('/mod/clientspreadsheet/remove.php', [
+                    'id' => $cm->id,
+                    'user' => $cohortuser->id,
+                ]),
+                get_string('remove'),
+                ['class' => 'btn btn-sm btn-outline-danger']
+            );
+        } else {
+            $action = '-';
+        }
+
+        $table->data[] = [
+            s($cohortuser->firstname),
+            s($cohortuser->lastname),
+            s($cohortuser->email),
+            $action,
+        ];
+    }
+
+    echo html_writer::table($table);
+    echo html_writer::div(
+        get_string('showingrows', 'clientspreadsheet', (object) [
+            'shown' => count($cohortusers),
+            'total' => count($cohortusers),
+        ]),
+        'clientspreadsheet-table-count'
+    );
+}
+echo html_writer::end_tag('section');
+
+echo html_writer::start_tag('section', ['class' => 'clientspreadsheet-section clientspreadsheet-additions-section']);
+echo $OUTPUT->heading(get_string('requestuseradditions', 'clientspreadsheet'), 3);
 echo html_writer::start_div('clientspreadsheet-layout');
 
 echo html_writer::start_div('clientspreadsheet-panel clientspreadsheet-upload-panel');
 echo $OUTPUT->heading(get_string('uploadspreadsheet', 'clientspreadsheet'), 3);
-if (has_capability('mod/clientspreadsheet:submit', $context)) {
+if (!empty($validationerrors)) {
+    echo $OUTPUT->notification(get_string('validationfailed', 'clientspreadsheet'), 'error');
+    echo html_writer::alist(array_map('s', $validationerrors), ['class' => 'clientspreadsheet-error-list']);
+}
+if ($cansubmit) {
     $mform->display();
 } else {
     echo $OUTPUT->notification(get_string('nopermissiontosubmit', 'clientspreadsheet'), 'warning');
@@ -150,6 +219,56 @@ echo html_writer::div(
     'clientspreadsheet-download'
 );
 echo html_writer::end_div();
+
+echo html_writer::end_div();
+echo html_writer::end_tag('section');
+
+echo html_writer::start_tag('section', ['class' => 'clientspreadsheet-section clientspreadsheet-pending-section']);
+echo $OUTPUT->heading(get_string('pendingrequests', 'clientspreadsheet'), 3);
+if (empty($pendinggroups)) {
+    echo $OUTPUT->notification(get_string('nopendingrequests', 'clientspreadsheet'), 'info');
+} else {
+    foreach ($pendinggroups as $group) {
+        $requester = $group['user'];
+        $requestername = $requester ? fullname($requester) : get_string('unknownuser', 'clientspreadsheet');
+        $requesteremail = $requester ? $requester->email : '';
+
+        echo html_writer::start_div('clientspreadsheet-request-group');
+        echo html_writer::tag('h4', s($requestername), ['class' => 'clientspreadsheet-requester']);
+        if ($requesteremail !== '') {
+            echo html_writer::div(s($requesteremail), 'clientspreadsheet-requester-email');
+        }
+
+        foreach ($group['requests'] as $request) {
+            $type = $request['type'];
+            $label = $type === \mod_clientspreadsheet\local\spreadsheet_helper::REQUEST_TYPE_ADDITION
+                ? get_string('additionrequest', 'clientspreadsheet')
+                : get_string('removalrequest', 'clientspreadsheet');
+
+            echo html_writer::start_div('clientspreadsheet-request-item');
+            echo html_writer::span($label, 'badge badge-info clientspreadsheet-request-type');
+            echo html_writer::span(userdate($request['timecreated']), 'clientspreadsheet-request-time');
+
+            if ($type === \mod_clientspreadsheet\local\spreadsheet_helper::REQUEST_TYPE_ADDITION) {
+                echo \mod_clientspreadsheet\local\spreadsheet_helper::render_requested_items(
+                    $request['items'],
+                    $request['filename']
+                );
+            } else {
+                $target = $request['target'];
+                $targetline = $target
+                    ? fullname($target) . ' (' . $target->email . ')'
+                    : get_string('unknownuser', 'clientspreadsheet');
+                echo html_writer::alist([s($targetline)], ['class' => 'clientspreadsheet-requested-items']);
+            }
+
+            echo html_writer::end_div();
+        }
+
+        echo html_writer::end_div();
+    }
+}
+echo html_writer::end_tag('section');
 
 echo html_writer::end_div();
 

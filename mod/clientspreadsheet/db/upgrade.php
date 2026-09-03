@@ -61,5 +61,75 @@ function xmldb_clientspreadsheet_upgrade($oldversion): bool {
         upgrade_mod_savepoint(true, 2026090200, 'clientspreadsheet');
     }
 
+    if ($oldversion < 2026090300) {
+        $submissiontable = new xmldb_table('clientspreadsheet_submission');
+
+        $cohortid = new xmldb_field(
+            'cohortid',
+            XMLDB_TYPE_INTEGER,
+            '10',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            '0',
+            'course'
+        );
+        if (!$dbman->field_exists($submissiontable, $cohortid)) {
+            $dbman->add_field($submissiontable, $cohortid);
+        }
+
+        $requesteditems = new xmldb_field(
+            'requesteditems',
+            XMLDB_TYPE_TEXT,
+            null,
+            null,
+            null,
+            null,
+            null,
+            'validationmessage'
+        );
+        if (!$dbman->field_exists($submissiontable, $requesteditems)) {
+            $dbman->add_field($submissiontable, $requesteditems);
+        }
+
+        $cohortindex = new xmldb_index('cohortid', XMLDB_INDEX_NOTUNIQUE, ['cohortid']);
+        if (!$dbman->index_exists($submissiontable, $cohortindex)) {
+            $dbman->add_index($submissiontable, $cohortindex);
+        }
+
+        $removaltable = new xmldb_table('clientspreadsheet_removal');
+        if (!$dbman->table_exists($removaltable)) {
+            $removaltable->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $removaltable->add_field('clientspreadsheetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $removaltable->add_field('course', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $removaltable->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $removaltable->add_field('targetuserid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $removaltable->add_field('cohortid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $removaltable->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'submitted');
+            $removaltable->add_field('reviewerid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $removaltable->add_field('timereviewed', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $removaltable->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $removaltable->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+            $removaltable->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $removaltable->add_key(
+                'clientspreadsheet_fk',
+                XMLDB_KEY_FOREIGN,
+                ['clientspreadsheetid'],
+                'clientspreadsheet',
+                ['id']
+            );
+
+            $removaltable->add_index('userid', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+            $removaltable->add_index('targetuserid', XMLDB_INDEX_NOTUNIQUE, ['targetuserid']);
+            $removaltable->add_index('cohortid', XMLDB_INDEX_NOTUNIQUE, ['cohortid']);
+            $removaltable->add_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
+
+            $dbman->create_table($removaltable);
+        }
+
+        upgrade_mod_savepoint(true, 2026090300, 'clientspreadsheet');
+    }
+
     return true;
 }

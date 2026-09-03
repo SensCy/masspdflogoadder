@@ -28,6 +28,15 @@ class spreadsheet_helper {
     /** @var int Default number of days completed submissions remain visible. */
     public const DEFAULT_COMPLETED_RETENTION_DAYS = 30;
 
+    /** @var string Internal score-account suffix hidden from client views. */
+    public const EXCLUDED_ACCOUNT_SUFFIX = '@senscyscore.com';
+
+    /** @var string Addition request type. */
+    public const REQUEST_TYPE_ADDITION = 'addition';
+
+    /** @var string Removal request type. */
+    public const REQUEST_TYPE_REMOVAL = 'removal';
+
     /** @var string[] Default required columns for Moodle user-upload style sheets. */
     public const DEFAULT_COLUMNS = [
         'email',
@@ -130,6 +139,144 @@ class spreadsheet_helper {
     }
 
     /**
+     * Gets visible cohort ids for a user.
+     *
+     * @param int $userid User id.
+     * @return int[]
+     */
+    public static function get_user_cohort_ids(int $userid): array {
+        global $CFG;
+
+        require_once($CFG->dirroot . '/cohort/lib.php');
+
+        $cohorts = cohort_get_user_cohorts($userid);
+
+        return array_values(array_map('intval', array_keys($cohorts)));
+    }
+
+    /**
+     * Finds one visible cohort shared by two users.
+     *
+     * @param int $userid Requesting user id.
+     * @param int $targetuserid Target user id.
+     * @return int Shared cohort id, or 0 when no shared cohort exists.
+     */
+    public static function get_shared_cohort_id(int $userid, int $targetuserid): int {
+        $cohortids = self::get_user_cohort_ids($userid);
+        if (empty($cohortids)) {
+            return 0;
+        }
+
+        $targetcohortids = self::get_user_cohort_ids($targetuserid);
+        $shared = array_values(array_intersect($cohortids, $targetcohortids));
+
+        return !empty($shared) ? (int) $shared[0] : 0;
+    }
+
+    /**
+     * Gets active users in the logged-in user's visible cohorts.
+     *
+     * @param int $userid User id.
+     * @return \stdClass[] User records.
+     */
+    public static function get_cohort_users_for_user(int $userid): array {
+        global $DB;
+
+        $cohortids = self::get_user_cohort_ids($userid);
+        if (empty($cohortids)) {
+            return [];
+        }
+
+        [$insql, $params] = $DB->get_in_or_equal($cohortids, \SQL_PARAMS_NAMED, 'cohortid');
+        $params['excludedemail'] = '%' . self::EXCLUDED_ACCOUNT_SUFFIX;
+        $params['excludedusername'] = '%' . self::EXCLUDED_ACCOUNT_SUFFIX;
+
+        return $DB->get_records_sql(
+            "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email, u.username, u.deleted, u.suspended,
+                    u.idnumber, u.alternatename, u.middlename, u.firstnamephonetic, u.lastnamephonetic
+               FROM {user} u
+               JOIN {cohort_members} cm ON cm.userid = u.id
+              WHERE cm.cohortid {$insql}
+                AND u.deleted = 0
+                AND u.suspended = 0
+                AND LOWER(u.email) NOT LIKE :excludedemail
+                AND LOWER(u.username) NOT LIKE :excludedusername
+           ORDER BY u.lastname ASC, u.firstname ASC, u.email ASC",
+            $params
+        );
+    }
+
+    /**
+     * Checks whether a user is an internal score account hidden from client lists.
+     *
+     * @param \stdClass $user User record.
+     * @return bool
+     */
+    public static function user_is_excluded_account(\stdClass $user): bool {
+        $email = \core_text::strtolower(trim($user->email ?? ''));
+        $username = \core_text::strtolower(trim($user->username ?? ''));
+
+        return self::ends_with($email, self::EXCLUDED_ACCOUNT_SUFFIX)
+            || self::ends_with($username, self::EXCLUDED_ACCOUNT_SUFFIX);
+    }
+
+    /**
+     * Gets pending removal records keyed by target user id.
+     *
+     * @param int $instanceid Activity instance id.
+     * @param int[] $targetuserids Target user ids.
+     * @return \stdClass[]
+     */
+    public static function get_pending_removal_targets(int $instanceid, array $targetuserids): array {
+        global $DB;
+
+        $targetuserids = array_values(array_unique(array_filter(array_map('intval', $targetuserids))));
+        if (empty($targetuserids)) {
+            return [];
+        }
+
+        [$insql, $params] = $DB->get_in_or_equal($targetuserids, \SQL_PARAMS_NAMED, 'targetuserid');
+        $params['clientspreadsheetid'] = $instanceid;
+        $params['status'] = self::STATUS_SUBMITTED;
+
+        $records = $DB->get_records_select(
+            'clientspreadsheet_removal',
+            "clientspreadsheetid = :clientspreadsheetid AND status = :status AND targetuserid {$insql}",
+            $params,
+            '',
+            'id, targetuserid'
+        );
+
+        $targets = [];
+        foreach ($records as $record) {
+            $targets[(int) $record->targetuserid] = $record;
+        }
+
+        return $targets;
+    }
+
+    /**
+     * Gets one pending removal request for a target user and cohort.
+     *
+     * @param int $instanceid Activity instance id.
+     * @param int $targetuserid Target user id.
+     * @param int $cohortid Cohort id.
+     * @return \stdClass|null
+     */
+    public static function get_pending_removal_request(int $instanceid, int $targetuserid, int $cohortid): ?\stdClass {
+        global $DB;
+
+        $record = $DB->get_record('clientspreadsheet_removal', [
+            'clientspreadsheetid' => $instanceid,
+            'targetuserid' => $targetuserid,
+            'cohortid' => $cohortid,
+            'status' => self::STATUS_SUBMITTED,
+        ]);
+
+        return $record ?: null;
+    }
+
+    /**
      * Gets the single draft file from a submitted filepicker element.
      *
      * @param int $draftitemid Draft item id.
@@ -190,6 +337,95 @@ class spreadsheet_helper {
     }
 
     /**
+     * Encodes requested spreadsheet rows for later display.
+     *
+     * @param array $items Requested row summaries.
+     * @return string
+     */
+    public static function encode_requested_items(array $items): string {
+        $json = json_encode(array_values($items), \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
+
+        return $json !== false ? $json : '[]';
+    }
+
+    /**
+     * Decodes requested spreadsheet rows.
+     *
+     * @param string|null $value Stored JSON.
+     * @return array
+     */
+    public static function decode_requested_items(?string $value): array {
+        if (trim((string) $value) === '') {
+            return [];
+        }
+
+        $decoded = json_decode((string) $value, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return array_values(array_filter($decoded, 'is_array'));
+    }
+
+    /**
+     * Renders requested items as a compact list.
+     *
+     * @param array $items Requested row summaries.
+     * @param string $fallback Fallback text.
+     * @param int $limit Maximum rows to render.
+     * @return string
+     */
+    public static function render_requested_items(array $items, string $fallback = '', int $limit = 12): string {
+        if (empty($items)) {
+            return $fallback !== '' ? s($fallback) : '-';
+        }
+
+        $lines = [];
+        foreach (array_slice($items, 0, $limit) as $item) {
+            $line = self::format_requested_item($item);
+            if ($line !== '') {
+                $lines[] = s($line);
+            }
+        }
+
+        $remaining = count($items) - count($lines);
+        if ($remaining > 0) {
+            $lines[] = s(get_string('additionalrequesteditems', 'clientspreadsheet', $remaining));
+        }
+
+        return !empty($lines)
+            ? \html_writer::alist($lines, ['class' => 'clientspreadsheet-requested-items'])
+            : ($fallback !== '' ? s($fallback) : '-');
+    }
+
+    /**
+     * Formats one requested user item.
+     *
+     * @param array $item Requested row summary.
+     * @return string
+     */
+    public static function format_requested_item(array $item): string {
+        $firstname = self::get_requested_item_value($item, 'firstname');
+        $lastname = self::get_requested_item_value($item, 'lastname');
+        $email = self::get_requested_item_value($item, 'email');
+        $name = trim($firstname . ' ' . $lastname);
+
+        if ($name !== '' && $email !== '') {
+            return $name . ' (' . $email . ')';
+        }
+
+        if ($email !== '') {
+            return $email;
+        }
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return implode(', ', array_filter(array_map('trim', array_map('strval', $item))));
+    }
+
+    /**
      * Returns a readable example value for a column.
      *
      * @param string $column Column name.
@@ -217,14 +453,72 @@ class spreadsheet_helper {
     }
 
     /**
+     * Gets a value from a requested item by normalised key.
+     *
+     * @param array $item Requested row summary.
+     * @param string $wanted Normalised key.
+     * @return string
+     */
+    private static function get_requested_item_value(array $item, string $wanted): string {
+        foreach ($item as $key => $value) {
+            $normalised = \core_text::strtolower(trim((string) $key));
+            $normalised = preg_replace('/[^a-z0-9]+/', '', $normalised);
+
+            if ($normalised === $wanted) {
+                return trim((string) $value);
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Checks whether a string ends with a suffix.
+     *
+     * @param string $value String to check.
+     * @param string $suffix Required suffix.
+     * @return bool
+     */
+    private static function ends_with(string $value, string $suffix): bool {
+        if ($suffix === '') {
+            return true;
+        }
+
+        return substr($value, -strlen($suffix)) === $suffix;
+    }
+
+    /**
+     * Gets user records by id.
+     *
+     * @param int[] $userids User ids.
+     * @return \stdClass[] Records keyed by user id.
+     */
+    public static function get_users_by_ids(array $userids): array {
+        global $DB;
+
+        $userids = array_values(array_unique(array_filter(array_map('intval', $userids))));
+        if (empty($userids)) {
+            return [];
+        }
+
+        [$insql, $params] = $DB->get_in_or_equal($userids, \SQL_PARAMS_NAMED, 'userid');
+
+        return $DB->get_records_select(
+            'user',
+            "id {$insql}",
+            $params,
+            '',
+            'id, firstname, lastname, email, username, idnumber, alternatename, middlename, firstnamephonetic, lastnamephonetic'
+        );
+    }
+
+    /**
      * Gets user records referenced by submissions.
      *
      * @param \stdClass[] $records Submission records.
      * @return \stdClass[] Records keyed by user id.
      */
     public static function get_submission_users(array $records): array {
-        global $DB;
-
         $userids = [];
         foreach ($records as $record) {
             $userids[] = (int) $record->userid;
@@ -233,20 +527,7 @@ class spreadsheet_helper {
             }
         }
 
-        $userids = array_values(array_unique(array_filter($userids)));
-        if (empty($userids)) {
-            return [];
-        }
-
-        [$insql, $params] = $DB->get_in_or_equal($userids, \SQL_PARAMS_NAMED);
-
-        return $DB->get_records_select(
-            'user',
-            "id {$insql}",
-            $params,
-            '',
-            'id, firstname, lastname, email, idnumber, alternatename, middlename, firstnamephonetic, lastnamephonetic'
-        );
+        return self::get_users_by_ids($userids);
     }
 
     /**
@@ -288,6 +569,182 @@ class spreadsheet_helper {
     }
 
     /**
+     * Gets pending addition and removal requests visible to a user through shared cohorts.
+     *
+     * @param \stdClass $instance Activity instance.
+     * @param int $userid User id.
+     * @return array Request groups keyed by requesting user.
+     */
+    public static function get_pending_requests_for_user(\stdClass $instance, int $userid): array {
+        $additions = self::get_pending_addition_requests_for_user((int) $instance->id, $userid);
+        $removals = self::get_pending_removal_requests_for_user((int) $instance->id, $userid);
+
+        $userids = [];
+        foreach ($additions as $addition) {
+            $userids[] = (int) $addition->userid;
+        }
+        foreach ($removals as $removal) {
+            $userids[] = (int) $removal->userid;
+            $userids[] = (int) $removal->targetuserid;
+        }
+
+        $users = self::get_users_by_ids($userids);
+        $groups = [];
+
+        foreach ($additions as $addition) {
+            $requester = $users[$addition->userid] ?? null;
+            self::add_grouped_request($groups, $addition->userid, $requester, [
+                'type' => self::REQUEST_TYPE_ADDITION,
+                'timecreated' => (int) $addition->timecreated,
+                'filename' => $addition->filename,
+                'items' => self::decode_requested_items($addition->requesteditems ?? ''),
+            ]);
+        }
+
+        foreach ($removals as $removal) {
+            $requester = $users[$removal->userid] ?? null;
+            $target = $users[$removal->targetuserid] ?? null;
+            self::add_grouped_request($groups, $removal->userid, $requester, [
+                'type' => self::REQUEST_TYPE_REMOVAL,
+                'timecreated' => (int) $removal->timecreated,
+                'target' => $target,
+            ]);
+        }
+
+        uasort($groups, static function(array $left, array $right): int {
+            return $right['lastcreated'] <=> $left['lastcreated'];
+        });
+
+        return array_values($groups);
+    }
+
+    /**
+     * Creates a pending removal request.
+     *
+     * @param \stdClass $instance Activity instance.
+     * @param \stdClass $course Course record.
+     * @param int $targetuserid Target user id.
+     * @param int $cohortid Cohort id.
+     * @return \stdClass Removal request.
+     */
+    public static function create_removal_request(
+        \stdClass $instance,
+        \stdClass $course,
+        int $targetuserid,
+        int $cohortid
+    ): \stdClass {
+        global $DB, $USER;
+
+        $existing = self::get_pending_removal_request((int) $instance->id, $targetuserid, $cohortid);
+        if ($existing) {
+            return $existing;
+        }
+
+        $time = time();
+        $request = (object) [
+            'clientspreadsheetid' => (int) $instance->id,
+            'course' => (int) $course->id,
+            'userid' => (int) $USER->id,
+            'targetuserid' => $targetuserid,
+            'cohortid' => $cohortid,
+            'status' => self::STATUS_SUBMITTED,
+            'reviewerid' => 0,
+            'timereviewed' => 0,
+            'timecreated' => $time,
+            'timemodified' => $time,
+        ];
+        $request->id = $DB->insert_record('clientspreadsheet_removal', $request);
+
+        return $request;
+    }
+
+    /**
+     * Gets pending spreadsheet additions visible through a user's cohorts.
+     *
+     * @param int $instanceid Activity instance id.
+     * @param int $userid User id.
+     * @return \stdClass[]
+     */
+    private static function get_pending_addition_requests_for_user(int $instanceid, int $userid): array {
+        global $DB;
+
+        $cohortids = self::get_user_cohort_ids($userid);
+        if (empty($cohortids)) {
+            return [];
+        }
+
+        [$storedcohortsql, $storedparams] = $DB->get_in_or_equal($cohortids, \SQL_PARAMS_NAMED, 'storedcohort');
+        [$membercohortsql, $memberparams] = $DB->get_in_or_equal($cohortids, \SQL_PARAMS_NAMED, 'membercohort');
+        $params = array_merge($storedparams, $memberparams, [
+            'clientspreadsheetid' => $instanceid,
+            'status' => self::STATUS_SUBMITTED,
+        ]);
+
+        return $DB->get_records_sql(
+            "SELECT DISTINCT s.*
+               FROM {clientspreadsheet_submission} s
+          LEFT JOIN {cohort_members} cm ON cm.userid = s.userid
+              WHERE s.clientspreadsheetid = :clientspreadsheetid
+                AND s.status = :status
+                AND (s.cohortid {$storedcohortsql}
+                     OR cm.cohortid {$membercohortsql})
+           ORDER BY s.timecreated DESC, s.id DESC",
+            $params
+        );
+    }
+
+    /**
+     * Gets pending user-removal requests visible through a user's cohorts.
+     *
+     * @param int $instanceid Activity instance id.
+     * @param int $userid User id.
+     * @return \stdClass[]
+     */
+    private static function get_pending_removal_requests_for_user(int $instanceid, int $userid): array {
+        global $DB;
+
+        $cohortids = self::get_user_cohort_ids($userid);
+        if (empty($cohortids)) {
+            return [];
+        }
+
+        [$cohortsql, $params] = $DB->get_in_or_equal($cohortids, \SQL_PARAMS_NAMED, 'removalcohort');
+        $params['clientspreadsheetid'] = $instanceid;
+        $params['status'] = self::STATUS_SUBMITTED;
+
+        return $DB->get_records_sql(
+            "SELECT DISTINCT r.*
+               FROM {clientspreadsheet_removal} r
+              WHERE r.clientspreadsheetid = :clientspreadsheetid
+                AND r.status = :status
+                AND r.cohortid {$cohortsql}
+           ORDER BY r.timecreated DESC, r.id DESC",
+            $params
+        );
+    }
+
+    /**
+     * Adds a request to a requester group.
+     *
+     * @param array $groups Request groups.
+     * @param int $userid Requesting user id.
+     * @param \stdClass|null $requester Requesting user record.
+     * @param array $request Request details.
+     */
+    private static function add_grouped_request(array &$groups, int $userid, ?\stdClass $requester, array $request): void {
+        if (!isset($groups[$userid])) {
+            $groups[$userid] = [
+                'user' => $requester,
+                'lastcreated' => 0,
+                'requests' => [],
+            ];
+        }
+
+        $groups[$userid]['lastcreated'] = max($groups[$userid]['lastcreated'], (int) $request['timecreated']);
+        $groups[$userid]['requests'][] = $request;
+    }
+
+    /**
      * Marks a submitted spreadsheet as completed.
      *
      * @param \stdClass $submission Submission record.
@@ -305,14 +762,31 @@ class spreadsheet_helper {
     }
 
     /**
-     * Deletes completed submissions whose retention period has expired.
+     * Marks a user-removal request as completed.
      *
-     * @return int Number of removed submissions.
+     * @param \stdClass $request Removal request.
+     */
+    public static function complete_removal_request(\stdClass $request): void {
+        global $DB, $USER;
+
+        $time = time();
+        $request->status = self::STATUS_COMPLETED;
+        $request->reviewerid = $USER->id;
+        $request->timereviewed = $time;
+        $request->timemodified = $time;
+
+        $DB->update_record('clientspreadsheet_removal', $request);
+    }
+
+    /**
+     * Deletes completed requests whose retention period has expired.
+     *
+     * @return int Number of removed requests.
      */
     public static function cleanup_completed_submissions(): int {
         global $DB;
 
-        $records = $DB->get_records_sql(
+        $submissionrecords = $DB->get_records_sql(
             "SELECT s.*, cs.completedretentiondays
                FROM {clientspreadsheet_submission} s
                JOIN {clientspreadsheet} cs ON cs.id = s.clientspreadsheetid
@@ -324,13 +798,32 @@ class spreadsheet_helper {
         $removed = 0;
         $now = time();
 
-        foreach ($records as $record) {
+        foreach ($submissionrecords as $record) {
             $retentiondays = self::normalise_retention_days($record->completedretentiondays);
             if ($record->timereviewed + ($retentiondays * \DAYSECS) > $now) {
                 continue;
             }
 
             self::delete_submission($record);
+            $removed++;
+        }
+
+        $removalrecords = $DB->get_records_sql(
+            "SELECT r.*, cs.completedretentiondays
+               FROM {clientspreadsheet_removal} r
+               JOIN {clientspreadsheet} cs ON cs.id = r.clientspreadsheetid
+              WHERE r.status = :status
+                AND r.timereviewed > 0",
+            ['status' => self::STATUS_COMPLETED]
+        );
+
+        foreach ($removalrecords as $record) {
+            $retentiondays = self::normalise_retention_days($record->completedretentiondays);
+            if ($record->timereviewed + ($retentiondays * \DAYSECS) > $now) {
+                continue;
+            }
+
+            self::delete_removal_request($record);
             $removed++;
         }
 
@@ -367,6 +860,17 @@ class spreadsheet_helper {
     }
 
     /**
+     * Deletes a user-removal request.
+     *
+     * @param \stdClass $request Removal request.
+     */
+    public static function delete_removal_request(\stdClass $request): void {
+        global $DB;
+
+        $DB->delete_records('clientspreadsheet_removal', ['id' => $request->id]);
+    }
+
+    /**
      * Sends a new-submission notification to the configured site admin.
      *
      * @param \stdClass $instance Activity instance.
@@ -381,27 +885,10 @@ class spreadsheet_helper {
         $cm,
         \stdClass $submission
     ): bool {
-        global $CFG, $DB, $USER;
+        global $USER;
 
-        $email = trim($instance->notificationemail ?? '');
-        if ($email === '') {
-            return false;
-        }
-
-        $recipient = $DB->get_record_sql(
-            "SELECT *
-               FROM {user}
-              WHERE LOWER(email) = LOWER(:email)
-                AND deleted = 0
-                AND suspended = 0",
-            ['email' => $email]
-        );
-
-        if (!$recipient || !is_siteadmin($recipient->id)) {
-            debugging(
-                'Client spreadsheet notification email is not an active Moodle site admin: ' . $email,
-                \DEBUG_DEVELOPER
-            );
+        $recipient = self::get_notification_recipient($instance);
+        if (!$recipient) {
             return false;
         }
 
@@ -449,5 +936,111 @@ class spreadsheet_helper {
             $USER->email,
             fullname($USER)
         );
+    }
+
+    /**
+     * Sends a user-removal request notification to the configured site admin.
+     *
+     * @param \stdClass $instance Activity instance.
+     * @param \stdClass $course Course record.
+     * @param \cm_info|\stdClass $cm Course module.
+     * @param \stdClass $request Removal request.
+     * @param \stdClass $targetuser Target user record.
+     * @return bool True when an email was sent.
+     */
+    public static function send_removal_notification(
+        \stdClass $instance,
+        \stdClass $course,
+        $cm,
+        \stdClass $request,
+        \stdClass $targetuser
+    ): bool {
+        global $USER;
+
+        $recipient = self::get_notification_recipient($instance);
+        if (!$recipient) {
+            return false;
+        }
+
+        $submissionsurl = new \moodle_url('/mod/clientspreadsheet/submissions.php', ['id' => $cm->id]);
+        $subject = get_string('removalnotificationsubject', 'clientspreadsheet', format_string($instance->name));
+        $data = (object) [
+            'activity' => format_string($instance->name),
+            'course' => format_string($course->fullname),
+            'requestedby' => fullname($USER),
+            'requestedbyemail' => $USER->email,
+            'targetuser' => fullname($targetuser),
+            'targetemail' => $targetuser->email,
+            'submittedtime' => userdate($request->timecreated),
+            'url' => $submissionsurl->out(false),
+        ];
+
+        $messagetext = get_string('removalnotificationbodytext', 'clientspreadsheet', $data);
+        $htmldata = (object) [
+            'activity' => s($data->activity),
+            'course' => s($data->course),
+            'requestedby' => s($data->requestedby),
+            'requestedbyemail' => s($data->requestedbyemail),
+            'targetuser' => s($data->targetuser),
+            'targetemail' => s($data->targetemail),
+            'submittedtime' => s($data->submittedtime),
+            'url' => s($data->url),
+        ];
+        $messagehtml = \html_writer::tag('p', get_string('removalnotificationbodyintro', 'clientspreadsheet'))
+            . \html_writer::alist([
+                get_string('notificationbodyactivity', 'clientspreadsheet', $htmldata),
+                get_string('notificationbodycourse', 'clientspreadsheet', $htmldata),
+                get_string('removalnotificationbodyrequester', 'clientspreadsheet', $htmldata),
+                get_string('removalnotificationbodytarget', 'clientspreadsheet', $htmldata),
+                get_string('notificationbodytime', 'clientspreadsheet', $htmldata),
+            ])
+            . \html_writer::tag('p', \html_writer::link($submissionsurl, get_string('viewsubmissions', 'clientspreadsheet')));
+
+        return (bool) email_to_user(
+            $recipient,
+            \core_user::get_noreply_user(),
+            $subject,
+            $messagetext,
+            $messagehtml,
+            '',
+            '',
+            true,
+            $USER->email,
+            fullname($USER)
+        );
+    }
+
+    /**
+     * Gets the configured notification recipient.
+     *
+     * @param \stdClass $instance Activity instance.
+     * @return \stdClass|null
+     */
+    private static function get_notification_recipient(\stdClass $instance): ?\stdClass {
+        global $DB;
+
+        $email = trim($instance->notificationemail ?? '');
+        if ($email === '') {
+            return null;
+        }
+
+        $recipient = $DB->get_record_sql(
+            "SELECT *
+               FROM {user}
+              WHERE LOWER(email) = LOWER(:email)
+                AND deleted = 0
+                AND suspended = 0",
+            ['email' => $email]
+        );
+
+        if (!$recipient || !is_siteadmin($recipient->id)) {
+            debugging(
+                'Client spreadsheet notification email is not an active Moodle site admin: ' . $email,
+                \DEBUG_DEVELOPER
+            );
+            return null;
+        }
+
+        return $recipient;
     }
 }

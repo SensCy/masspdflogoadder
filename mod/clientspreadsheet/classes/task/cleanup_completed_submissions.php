@@ -11,7 +11,7 @@ namespace mod_clientspreadsheet\task;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Removes completed submissions after their retention period expires.
+ * Removes completed requests after their retention period expires.
  *
  * @package    mod_clientspreadsheet
  * @copyright  2026
