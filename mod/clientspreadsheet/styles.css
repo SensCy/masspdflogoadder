@@ -23,10 +23,12 @@
 }
 
 .clientspreadsheet-section h3 {
-    color: #3f4752;
-    font-size: 1.45rem;
-    font-weight: 400;
-    margin-bottom: 0.65rem;
+    border-bottom: 2px solid #d8dde4;
+    color: #26313d;
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.45rem;
 }
 
 .clientspreadsheet-muted,
@@ -37,6 +39,10 @@
 
 .clientspreadsheet-table-count {
     margin-top: 0.65rem;
+}
+
+.clientspreadsheet-user-paging {
+    margin-top: 0.75rem;
 }
 
 .clientspreadsheet-user-table th,
@@ -50,6 +56,9 @@
 }
 
 .clientspreadsheet-panel h3 {
+    color: #1f2a36;
+    font-size: 1.35rem;
+    font-weight: 700;
     margin-top: 0;
     margin-bottom: 0.75rem;
 }
@@ -158,6 +167,11 @@
     padding-left: 1.1rem;
 }
 
+.clientspreadsheet-requested-fallback {
+    display: block;
+    padding-left: 0;
+}
+
 .clientspreadsheet-admin-split {
     display: grid;
     grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
@@ -179,6 +193,15 @@
 
 .clientspreadsheet-example-table th {
     white-space: nowrap;
+}
+
+.clientspreadsheet-example-table th,
+.clientspreadsheet-user-table th,
+.clientspreadsheet-submissions th {
+    background: #f2f5f8;
+    color: #3f4752;
+    font-size: 1rem;
+    font-weight: 700;
 }
 
 .clientspreadsheet-example-table th,

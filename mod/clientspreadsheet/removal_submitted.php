@@ -50,11 +50,6 @@ echo html_writer::div(
         new moodle_url('/mod/clientspreadsheet/view.php', ['id' => $cm->id]),
         get_string('backtoactivity', 'clientspreadsheet'),
         ['class' => 'btn btn-primary']
-    ) . ' ' .
-    html_writer::link(
-        new moodle_url('/course/view.php', ['id' => $course->id]),
-        get_string('returntocourse', 'clientspreadsheet'),
-        ['class' => 'btn btn-secondary']
     ),
     'clientspreadsheet-confirm-actions'
 );

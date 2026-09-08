@@ -17,6 +17,7 @@
 require(__DIR__ . '/../../config.php');
 
 $id = required_param('id', PARAM_INT);
+$activeuserpage = optional_param('activeuserpage', 0, PARAM_INT);
 
 $cm = get_coursemodule_from_id('clientspreadsheet', $id, 0, false, MUST_EXIST);
 $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
@@ -126,7 +127,16 @@ if (is_siteadmin()) {
     );
 }
 
-$cohortusers = \mod_clientspreadsheet\local\spreadsheet_helper::get_cohort_users_for_user($USER->id);
+$activeuserperpage = 25;
+$activeusertotal = \mod_clientspreadsheet\local\spreadsheet_helper::count_cohort_users_for_user($USER->id);
+$maxactiveuserpage = $activeusertotal > 0 ? (int) ceil($activeusertotal / $activeuserperpage) - 1 : 0;
+$activeuserpage = max(0, min($activeuserpage, $maxactiveuserpage));
+$activeuseroffset = $activeuserpage * $activeuserperpage;
+$cohortusers = \mod_clientspreadsheet\local\spreadsheet_helper::get_cohort_users_for_user(
+    $USER->id,
+    $activeuserperpage,
+    $activeuseroffset
+);
 $pendingremovals = \mod_clientspreadsheet\local\spreadsheet_helper::get_pending_removal_targets(
     $clientspreadsheet->id,
     array_keys($cohortusers)
@@ -180,13 +190,22 @@ if (empty($cohortusers)) {
     }
 
     echo html_writer::table($table);
+    $shownstart = $activeuseroffset + 1;
+    $shownend = min($activeuseroffset + count($cohortusers), $activeusertotal);
     echo html_writer::div(
-        get_string('showingrows', 'clientspreadsheet', (object) [
-            'shown' => count($cohortusers),
-            'total' => count($cohortusers),
+        get_string('showingusers', 'clientspreadsheet', (object) [
+            'start' => $shownstart,
+            'end' => $shownend,
+            'total' => $activeusertotal,
         ]),
         'clientspreadsheet-table-count'
     );
+    if ($activeusertotal > $activeuserperpage) {
+        echo html_writer::div(
+            $OUTPUT->paging_bar($activeusertotal, $activeuserpage, $activeuserperpage, $url, 'activeuserpage'),
+            'clientspreadsheet-user-paging'
+        );
+    }
 }
 echo html_writer::end_tag('section');
 

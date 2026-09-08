@@ -5,14 +5,14 @@
 ## What it does
 
 - Shows clients a two-column activity page: upload form on the left, example spreadsheet preview on the right.
-- Shows clients active users from their Moodle cohort, excluding internal `@senscyscore.com` score accounts.
+- Shows clients active users from their Moodle cohort, 25 per page, excluding internal `@senscyscore.com` score accounts.
 - Lets clients request user removals with a confirmation step and a 48-hour processing message.
 - Provides a generated CSV example download based on the activity's required columns.
 - Accepts one `.xlsx` or `.csv` upload per submission.
 - Validates that the spreadsheet has the required headers, no duplicate headers, at least one data row, and values in required columns.
 - Stores valid submissions for staff review.
 - Shows pending addition and removal requests to users in the same cohort, grouped by requester.
-- Gives clients a confirmation page asking them to allow 24 hours for processing.
+- Gives clients a confirmation page asking them to allow 24 hours for processing, with one return-to-activity button.
 - Sends an optional email notification to one configured Moodle site admin after each valid submission.
 - Lets site admins review user additions and user deletions in clearly labeled split-screen panels.
 - Lets site admins download submitted sheets and mark addition or deletion requests completed after a confirmation step.

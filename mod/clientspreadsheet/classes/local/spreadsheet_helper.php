@@ -177,9 +177,11 @@ class spreadsheet_helper {
      * Gets active users in the logged-in user's visible cohorts.
      *
      * @param int $userid User id.
+     * @param int $limit Number of users to return. Use 0 for all users.
+     * @param int $offset Starting offset.
      * @return \stdClass[] User records.
      */
-    public static function get_cohort_users_for_user(int $userid): array {
+    public static function get_cohort_users_for_user(int $userid, int $limit = 0, int $offset = 0): array {
         global $DB;
 
         $cohortids = self::get_user_cohort_ids($userid);
@@ -202,6 +204,39 @@ class spreadsheet_helper {
                 AND LOWER(u.email) NOT LIKE :excludedemail
                 AND LOWER(u.username) NOT LIKE :excludedusername
            ORDER BY u.lastname ASC, u.firstname ASC, u.email ASC",
+            $params,
+            max(0, $offset),
+            max(0, $limit)
+        );
+    }
+
+    /**
+     * Counts active users in the logged-in user's visible cohorts.
+     *
+     * @param int $userid User id.
+     * @return int User count.
+     */
+    public static function count_cohort_users_for_user(int $userid): int {
+        global $DB;
+
+        $cohortids = self::get_user_cohort_ids($userid);
+        if (empty($cohortids)) {
+            return 0;
+        }
+
+        [$insql, $params] = $DB->get_in_or_equal($cohortids, \SQL_PARAMS_NAMED, 'cohortid');
+        $params['excludedemail'] = '%' . self::EXCLUDED_ACCOUNT_SUFFIX;
+        $params['excludedusername'] = '%' . self::EXCLUDED_ACCOUNT_SUFFIX;
+
+        return (int) $DB->count_records_sql(
+            "SELECT COUNT(DISTINCT u.id)
+               FROM {user} u
+               JOIN {cohort_members} cm ON cm.userid = u.id
+              WHERE cm.cohortid {$insql}
+                AND u.deleted = 0
+                AND u.suspended = 0
+                AND LOWER(u.email) NOT LIKE :excludedemail
+                AND LOWER(u.username) NOT LIKE :excludedusername",
             $params
         );
     }
@@ -377,7 +412,9 @@ class spreadsheet_helper {
      */
     public static function render_requested_items(array $items, string $fallback = '', int $limit = 12): string {
         if (empty($items)) {
-            return $fallback !== '' ? s($fallback) : '-';
+            return $fallback !== ''
+                ? \html_writer::div(s($fallback), 'clientspreadsheet-requested-items clientspreadsheet-requested-fallback')
+                : '-';
         }
 
         $lines = [];
