@@ -135,5 +135,9 @@ function xmldb_clientspreadsheet_upgrade($oldversion): bool {
         upgrade_mod_savepoint(true, 2026090800, 'clientspreadsheet');
     }
 
+    if ($oldversion < 2026090801) {
+        upgrade_mod_savepoint(true, 2026090801, 'clientspreadsheet');
+    }
+
     return true;
 }

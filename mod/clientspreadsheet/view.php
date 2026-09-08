@@ -145,6 +145,39 @@ $pendinggroups = \mod_clientspreadsheet\local\spreadsheet_helper::get_pending_re
 
 echo html_writer::start_div('clientspreadsheet-console');
 
+echo html_writer::start_tag('section', ['class' => 'clientspreadsheet-section clientspreadsheet-additions-section']);
+echo $OUTPUT->heading(get_string('requestuseradditions', 'clientspreadsheet'), 3);
+echo html_writer::start_div('clientspreadsheet-layout');
+
+echo html_writer::start_div('clientspreadsheet-panel clientspreadsheet-upload-panel');
+echo $OUTPUT->heading(get_string('uploadspreadsheet', 'clientspreadsheet'), 3);
+if (!empty($validationerrors)) {
+    echo $OUTPUT->notification(get_string('validationfailed', 'clientspreadsheet'), 'error');
+    echo html_writer::alist(array_map('s', $validationerrors), ['class' => 'clientspreadsheet-error-list']);
+}
+if ($cansubmit) {
+    $mform->display();
+} else {
+    echo $OUTPUT->notification(get_string('nopermissiontosubmit', 'clientspreadsheet'), 'warning');
+}
+echo html_writer::end_div();
+
+echo html_writer::start_div('clientspreadsheet-panel clientspreadsheet-example-panel');
+echo $OUTPUT->heading(get_string('examplespreadsheet', 'clientspreadsheet'), 3);
+echo \mod_clientspreadsheet\local\spreadsheet_helper::render_example_table($clientspreadsheet);
+echo html_writer::div(
+    html_writer::link(
+        new moodle_url('/mod/clientspreadsheet/template.php', ['id' => $cm->id]),
+        get_string('downloadexample', 'clientspreadsheet'),
+        ['class' => 'btn btn-primary']
+    ),
+    'clientspreadsheet-download'
+);
+echo html_writer::end_div();
+
+echo html_writer::end_div();
+echo html_writer::end_tag('section');
+
 echo html_writer::start_tag('section', ['class' => 'clientspreadsheet-section clientspreadsheet-active-users']);
 echo $OUTPUT->heading(get_string('activeusers', 'clientspreadsheet'), 3);
 echo html_writer::tag('p', get_string('activeusersintro', 'clientspreadsheet'), ['class' => 'clientspreadsheet-muted']);
@@ -207,39 +240,6 @@ if (empty($cohortusers)) {
         );
     }
 }
-echo html_writer::end_tag('section');
-
-echo html_writer::start_tag('section', ['class' => 'clientspreadsheet-section clientspreadsheet-additions-section']);
-echo $OUTPUT->heading(get_string('requestuseradditions', 'clientspreadsheet'), 3);
-echo html_writer::start_div('clientspreadsheet-layout');
-
-echo html_writer::start_div('clientspreadsheet-panel clientspreadsheet-upload-panel');
-echo $OUTPUT->heading(get_string('uploadspreadsheet', 'clientspreadsheet'), 3);
-if (!empty($validationerrors)) {
-    echo $OUTPUT->notification(get_string('validationfailed', 'clientspreadsheet'), 'error');
-    echo html_writer::alist(array_map('s', $validationerrors), ['class' => 'clientspreadsheet-error-list']);
-}
-if ($cansubmit) {
-    $mform->display();
-} else {
-    echo $OUTPUT->notification(get_string('nopermissiontosubmit', 'clientspreadsheet'), 'warning');
-}
-echo html_writer::end_div();
-
-echo html_writer::start_div('clientspreadsheet-panel clientspreadsheet-example-panel');
-echo $OUTPUT->heading(get_string('examplespreadsheet', 'clientspreadsheet'), 3);
-echo \mod_clientspreadsheet\local\spreadsheet_helper::render_example_table($clientspreadsheet);
-echo html_writer::div(
-    html_writer::link(
-        new moodle_url('/mod/clientspreadsheet/template.php', ['id' => $cm->id]),
-        get_string('downloadexample', 'clientspreadsheet'),
-        ['class' => 'btn btn-primary']
-    ),
-    'clientspreadsheet-download'
-);
-echo html_writer::end_div();
-
-echo html_writer::end_div();
 echo html_writer::end_tag('section');
 
 echo html_writer::start_tag('section', ['class' => 'clientspreadsheet-section clientspreadsheet-pending-section']);

@@ -46,10 +46,10 @@ last name
 ## Client Workflow
 
 1. Open the activity.
-2. Review active users in their cohort.
-3. Click **Remove** for a cohort user to submit a removal request, then confirm the action and see the 48-hour processing message.
-4. Compare their add-user sheet to the visual example.
-5. Download the generated example CSV if needed.
-6. Upload a `.xlsx` or `.csv`.
-7. Fix any validation errors shown on screen, or see the 24-hour confirmation page after a valid submission.
+2. Compare their add-user sheet to the visual example.
+3. Download the generated example CSV if needed.
+4. Upload a `.xlsx` or `.csv`.
+5. Fix any validation errors shown on screen, or see the 24-hour confirmation page after a valid submission.
+6. Review active users in their cohort.
+7. Click **Remove** for a cohort user to submit a removal request, then confirm the action and see the 48-hour processing message.
 8. Review pending addition and removal requests for their cohort at the bottom of the activity.
