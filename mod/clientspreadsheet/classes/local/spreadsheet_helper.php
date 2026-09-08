@@ -445,21 +445,46 @@ class spreadsheet_helper {
         $firstname = self::get_requested_item_value($item, 'firstname');
         $lastname = self::get_requested_item_value($item, 'lastname');
         $email = self::get_requested_item_value($item, 'email');
+        $role = self::get_requested_item_value($item, 'role');
         $name = trim($firstname . ' ' . $lastname);
+        $roletext = '';
+        if ($role !== '') {
+            $rolekey = \core_text::strtolower($role) === 'admin' ? 'roleadmin' : 'rolemember';
+            $roletext = get_string('requestedroleformat', 'clientspreadsheet', get_string($rolekey, 'clientspreadsheet'));
+        }
 
         if ($name !== '' && $email !== '') {
-            return $name . ' (' . $email . ')';
+            return self::append_requested_role($name . ' (' . $email . ')', $roletext);
         }
 
         if ($email !== '') {
-            return $email;
+            return self::append_requested_role($email, $roletext);
         }
 
         if ($name !== '') {
-            return $name;
+            return self::append_requested_role($name, $roletext);
         }
 
-        return implode(', ', array_filter(array_map('trim', array_map('strval', $item))));
+        return self::append_requested_role(
+            implode(', ', array_filter(array_map('trim', array_map('strval', $item)))),
+            $roletext
+        );
+    }
+
+    /**
+     * Appends role text to a requested user summary.
+     *
+     * @param string $line Summary text.
+     * @param string $roletext Role text.
+     * @return string
+     */
+    private static function append_requested_role(string $line, string $roletext): string {
+        $line = trim($line);
+        if ($roletext === '') {
+            return $line;
+        }
+
+        return $line !== '' ? $line . ' - ' . $roletext : $roletext;
     }
 
     /**

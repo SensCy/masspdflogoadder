@@ -62,6 +62,7 @@ if ($action === 'addsingleuser') {
     $firstname = trim(optional_param('firstname', '', PARAM_TEXT));
     $lastname = trim(optional_param('lastname', '', PARAM_TEXT));
     $email = trim(optional_param('email', '', PARAM_EMAIL));
+    $requestedrole = optional_param('requestedrole', 'member', PARAM_ALPHA);
 
     if ($firstname === '') {
         $singleusererrors[] = get_string('missingfirstname', 'clientspreadsheet');
@@ -72,6 +73,9 @@ if ($action === 'addsingleuser') {
     if ($email === '' || !validate_email($email)) {
         $singleusererrors[] = get_string('invalidemail', 'clientspreadsheet');
     }
+    if (!in_array($requestedrole, ['member', 'admin'], true)) {
+        $singleusererrors[] = get_string('invalidrole', 'clientspreadsheet');
+    }
 
     if (empty($singleusererrors)) {
         $cohortids = \mod_clientspreadsheet\local\spreadsheet_helper::get_user_cohort_ids($USER->id);
@@ -80,6 +84,7 @@ if ($action === 'addsingleuser') {
             'first name' => $firstname,
             'last name' => $lastname,
             'email' => $email,
+            'role' => $requestedrole,
         ]];
         $submission = (object) [
             'clientspreadsheetid' => $clientspreadsheet->id,
@@ -501,7 +506,7 @@ echo html_writer::end_div();
 
 echo html_writer::start_div('clientspreadsheet-header-actions');
 if ($cansubmit) {
-    echo html_writer::tag('button', get_string('adduser', 'clientspreadsheet'), [
+    echo html_writer::tag('button', get_string('addusersbutton', 'clientspreadsheet'), [
         'type' => 'button',
         'class' => 'btn btn-primary',
         'data-toggle' => 'modal',
@@ -509,17 +514,12 @@ if ($cansubmit) {
         'data-bs-toggle' => 'modal',
         'data-bs-target' => '#clientspreadsheet-add-user-modal',
     ]);
-    echo html_writer::link(
-        '#clientspreadsheet-bulk-import',
-        get_string('bulkimportcsv', 'clientspreadsheet'),
-        ['class' => 'btn btn-secondary']
-    );
 }
 if (is_siteadmin()) {
     echo html_writer::link(
         new moodle_url('/mod/clientspreadsheet/submissions.php', ['id' => $cm->id]),
-        get_string('viewsubmissions', 'clientspreadsheet'),
-        ['class' => 'btn btn-secondary']
+        get_string('viewuploadhistory', 'clientspreadsheet'),
+        ['class' => 'clientspreadsheet-history-link']
     );
 }
 echo html_writer::end_div();
@@ -544,26 +544,12 @@ if (!empty($singleusererrors)) {
     echo html_writer::alist(array_map('s', $singleusererrors), ['class' => 'clientspreadsheet-error-list']);
 }
 
-if ($cansubmit) {
-    echo html_writer::start_tag('section', [
-        'id' => 'clientspreadsheet-bulk-import',
-        'class' => 'clientspreadsheet-section clientspreadsheet-upload-module',
-    ]);
-    echo html_writer::start_div('clientspreadsheet-upload-heading');
-    echo $OUTPUT->heading(get_string('bulkimportcsv', 'clientspreadsheet'), 3);
-    echo html_writer::link(
-        new moodle_url('/mod/clientspreadsheet/template.php', ['id' => $cm->id]),
-        get_string('downloadcsvtemplate', 'clientspreadsheet'),
-        ['class' => 'clientspreadsheet-template-link']
-    );
-    echo html_writer::end_div();
-    if (!empty($validationerrors)) {
-        echo $OUTPUT->notification(get_string('validationfailed', 'clientspreadsheet'), 'error');
-        echo html_writer::alist(array_map('s', $validationerrors), ['class' => 'clientspreadsheet-error-list']);
-    }
-    $mform->display();
-    echo html_writer::end_tag('section');
-} else {
+if (!empty($validationerrors)) {
+    echo $OUTPUT->notification(get_string('validationfailed', 'clientspreadsheet'), 'error');
+    echo html_writer::alist(array_map('s', $validationerrors), ['class' => 'clientspreadsheet-error-list']);
+}
+
+if (!$cansubmit) {
     echo $OUTPUT->notification(get_string('nopermissiontosubmit', 'clientspreadsheet'), 'warning');
 }
 
@@ -602,6 +588,20 @@ if ($tab === 'pending') {
 echo html_writer::end_tag('section');
 
 if ($cansubmit) {
+    $bulkactive = !empty($validationerrors);
+    $manualactive = !$bulkactive;
+    $postedfirstname = $action === 'addsingleuser' ? trim(optional_param('firstname', '', PARAM_TEXT)) : '';
+    $postedlastname = $action === 'addsingleuser' ? trim(optional_param('lastname', '', PARAM_TEXT)) : '';
+    $postedemail = $action === 'addsingleuser' ? trim(optional_param('email', '', PARAM_EMAIL)) : '';
+    $postedrole = $action === 'addsingleuser' ? optional_param('requestedrole', 'member', PARAM_ALPHA) : 'member';
+    if (!in_array($postedrole, ['member', 'admin'], true)) {
+        $postedrole = 'member';
+    }
+    $manualroleoptions = [
+        'member' => get_string('rolemember', 'clientspreadsheet'),
+        'admin' => get_string('roleadmin', 'clientspreadsheet'),
+    ];
+
     echo html_writer::start_div('modal fade', [
         'id' => 'clientspreadsheet-add-user-modal',
         'tabindex' => '-1',
@@ -609,11 +609,10 @@ if ($cansubmit) {
         'aria-labelledby' => 'clientspreadsheet-add-user-title',
         'aria-hidden' => 'true',
     ]);
-    echo html_writer::start_div('modal-dialog', ['role' => 'document']);
-    echo html_writer::start_tag('form', ['method' => 'post', 'action' => $url->out(false)]);
+    echo html_writer::start_div('modal-dialog modal-lg clientspreadsheet-add-users-dialog', ['role' => 'document']);
     echo html_writer::start_div('modal-content');
     echo html_writer::start_div('modal-header');
-    echo html_writer::tag('h3', get_string('adduser', 'clientspreadsheet'), [
+    echo html_writer::tag('h3', get_string('addusers', 'clientspreadsheet'), [
         'class' => 'modal-title',
         'id' => 'clientspreadsheet-add-user-title',
     ]);
@@ -630,8 +629,45 @@ if ($cansubmit) {
     );
     echo html_writer::end_div();
     echo html_writer::start_div('modal-body');
+    echo html_writer::start_tag('ul', ['class' => 'nav nav-tabs clientspreadsheet-add-tabs', 'role' => 'tablist']);
+    echo html_writer::tag(
+        'li',
+        html_writer::link('#clientspreadsheet-manual-entry', get_string('manualentry', 'clientspreadsheet'), [
+            'class' => 'nav-link' . ($manualactive ? ' active' : ''),
+            'id' => 'clientspreadsheet-manual-tab',
+            'data-toggle' => 'tab',
+            'data-bs-toggle' => 'tab',
+            'role' => 'tab',
+            'aria-controls' => 'clientspreadsheet-manual-entry',
+            'aria-selected' => $manualactive ? 'true' : 'false',
+        ]),
+        ['class' => 'nav-item']
+    );
+    echo html_writer::tag(
+        'li',
+        html_writer::link('#clientspreadsheet-bulk-entry', get_string('bulkimportcsvtab', 'clientspreadsheet'), [
+            'class' => 'nav-link' . ($bulkactive ? ' active' : ''),
+            'id' => 'clientspreadsheet-bulk-tab',
+            'data-toggle' => 'tab',
+            'data-bs-toggle' => 'tab',
+            'role' => 'tab',
+            'aria-controls' => 'clientspreadsheet-bulk-entry',
+            'aria-selected' => $bulkactive ? 'true' : 'false',
+        ]),
+        ['class' => 'nav-item']
+    );
+    echo html_writer::end_tag('ul');
+
+    echo html_writer::start_div('tab-content clientspreadsheet-add-tab-content');
+    echo html_writer::start_div('tab-pane fade' . ($manualactive ? ' show active' : ''), [
+        'id' => 'clientspreadsheet-manual-entry',
+        'role' => 'tabpanel',
+        'aria-labelledby' => 'clientspreadsheet-manual-tab',
+    ]);
+    echo html_writer::start_tag('form', ['method' => 'post', 'action' => $url->out(false)]);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'addsingleuser']);
+    echo html_writer::start_div('clientspreadsheet-manual-grid');
     echo html_writer::start_div('form-group');
     echo html_writer::tag('label', get_string('firstname'), ['for' => 'clientspreadsheet-firstname']);
     echo html_writer::empty_tag('input', [
@@ -639,6 +675,7 @@ if ($cansubmit) {
         'class' => 'form-control',
         'id' => 'clientspreadsheet-firstname',
         'name' => 'firstname',
+        'value' => $postedfirstname,
         'required' => 'required',
     ]);
     echo html_writer::end_div();
@@ -649,6 +686,7 @@ if ($cansubmit) {
         'class' => 'form-control',
         'id' => 'clientspreadsheet-lastname',
         'name' => 'lastname',
+        'value' => $postedlastname,
         'required' => 'required',
     ]);
     echo html_writer::end_div();
@@ -659,20 +697,19 @@ if ($cansubmit) {
         'class' => 'form-control',
         'id' => 'clientspreadsheet-email',
         'name' => 'email',
+        'value' => $postedemail,
         'required' => 'required',
     ]);
     echo html_writer::end_div();
+    echo html_writer::start_div('form-group');
+    echo html_writer::tag('label', get_string('role', 'clientspreadsheet'), ['for' => 'clientspreadsheet-requestedrole']);
+    echo html_writer::select($manualroleoptions, 'requestedrole', $postedrole, false, [
+        'class' => 'custom-select',
+        'id' => 'clientspreadsheet-requestedrole',
+    ]);
     echo html_writer::end_div();
-    echo html_writer::start_div('modal-footer');
-    echo html_writer::link(
-        '#clientspreadsheet-bulk-import',
-        get_string('bulkimportcsv', 'clientspreadsheet'),
-        [
-            'class' => 'btn btn-secondary mr-auto',
-            'data-dismiss' => 'modal',
-            'data-bs-dismiss' => 'modal',
-        ]
-    );
+    echo html_writer::end_div();
+    echo html_writer::start_div('clientspreadsheet-modal-actions');
     echo html_writer::tag('button', get_string('cancel'), [
         'type' => 'button',
         'class' => 'btn btn-secondary',
@@ -684,8 +721,34 @@ if ($cansubmit) {
         'class' => 'btn btn-primary',
     ]);
     echo html_writer::end_div();
-    echo html_writer::end_div();
     echo html_writer::end_tag('form');
+    echo html_writer::end_div();
+
+    echo html_writer::start_div('tab-pane fade' . ($bulkactive ? ' show active' : ''), [
+        'id' => 'clientspreadsheet-bulk-entry',
+        'role' => 'tabpanel',
+        'aria-labelledby' => 'clientspreadsheet-bulk-tab',
+    ]);
+    echo html_writer::start_div('clientspreadsheet-bulk-modal-header');
+    echo html_writer::tag('p', get_string('bulkimporthelp', 'clientspreadsheet'), ['class' => 'clientspreadsheet-modal-help']);
+    echo html_writer::link(
+        new moodle_url('/mod/clientspreadsheet/template.php', ['id' => $cm->id]),
+        get_string('downloadcsvtemplate', 'clientspreadsheet'),
+        ['class' => 'clientspreadsheet-template-link']
+    );
+    echo html_writer::end_div();
+    if (!empty($validationerrors)) {
+        echo $OUTPUT->notification(get_string('validationfailed', 'clientspreadsheet'), 'error');
+        echo html_writer::alist(array_map('s', $validationerrors), ['class' => 'clientspreadsheet-error-list']);
+    }
+    echo html_writer::start_div('clientspreadsheet-modal-upload');
+    $mform->display();
+    echo html_writer::end_div();
+    echo html_writer::end_div();
+
+    echo html_writer::end_div();
+    echo html_writer::end_div();
+    echo html_writer::end_div();
     echo html_writer::end_div();
     echo html_writer::end_div();
 }
