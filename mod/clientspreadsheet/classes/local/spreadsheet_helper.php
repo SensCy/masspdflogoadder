@@ -575,6 +575,10 @@ class spreadsheet_helper {
      * @return string HTML link.
      */
     public static function get_submission_download_link(\context_module $context, \stdClass $record): string {
+        if ((int) ($record->filesize ?? 0) === 0 && trim((string) ($record->mimetype ?? '')) === '') {
+            return s($record->filename ?: get_string('manualadditionfilename', 'clientspreadsheet'));
+        }
+
         $files = get_file_storage()->get_area_files(
             $context->id,
             'mod_clientspreadsheet',
