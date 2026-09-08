@@ -99,6 +99,20 @@
     gap: 1rem;
 }
 
+.clientspreadsheet-manual-grid .form-group {
+    margin-bottom: 0;
+}
+
+.clientspreadsheet-manual-grid label {
+    display: block;
+    margin-bottom: 0.35rem;
+}
+
+.clientspreadsheet-manual-grid .form-control,
+.clientspreadsheet-manual-grid .custom-select {
+    width: 100%;
+}
+
 .clientspreadsheet-modal-actions {
     display: flex;
     justify-content: flex-end;

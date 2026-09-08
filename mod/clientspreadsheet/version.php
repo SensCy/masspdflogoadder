@@ -17,7 +17,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_clientspreadsheet';
-$plugin->version = 2026090803;
+$plugin->version = 2026090804;
 $plugin->requires = 2022112800;
 $plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.4.1';
+$plugin->release = '0.4.2';
