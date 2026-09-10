@@ -959,36 +959,30 @@ class spreadsheet_helper {
         }
 
         $submissionsurl = new \moodle_url('/mod/clientspreadsheet/submissions.php', ['id' => $cm->id]);
-        $subject = get_string('notificationsubject', 'clientspreadsheet', format_string($instance->name));
+        $subject = get_string('notificationsubject', 'clientspreadsheet');
         $data = (object) [
-            'activity' => format_string($instance->name),
-            'course' => format_string($course->fullname),
             'submittedby' => fullname($USER),
             'submittedbyemail' => $USER->email,
-            'filename' => $submission->filename,
+            'requestsummary' => self::get_submission_request_summary($submission),
             'submittedtime' => userdate($submission->timecreated),
             'url' => $submissionsurl->out(false),
         ];
 
         $messagetext = get_string('notificationbodytext', 'clientspreadsheet', $data);
         $htmldata = (object) [
-            'activity' => s($data->activity),
-            'course' => s($data->course),
             'submittedby' => s($data->submittedby),
             'submittedbyemail' => s($data->submittedbyemail),
-            'filename' => s($data->filename),
+            'requestsummary' => s($data->requestsummary),
             'submittedtime' => s($data->submittedtime),
             'url' => s($data->url),
         ];
         $messagehtml = \html_writer::tag('p', get_string('notificationbodyintro', 'clientspreadsheet'))
             . \html_writer::alist([
-                get_string('notificationbodyactivity', 'clientspreadsheet', $htmldata),
-                get_string('notificationbodycourse', 'clientspreadsheet', $htmldata),
                 get_string('notificationbodysubmitter', 'clientspreadsheet', $htmldata),
-                get_string('notificationbodyfile', 'clientspreadsheet', $htmldata),
+                get_string('notificationbodyrequest', 'clientspreadsheet', $htmldata),
                 get_string('notificationbodytime', 'clientspreadsheet', $htmldata),
             ])
-            . \html_writer::tag('p', \html_writer::link($submissionsurl, get_string('viewsubmissions', 'clientspreadsheet')));
+            . \html_writer::tag('p', \html_writer::link($submissionsurl, get_string('reviewrequest', 'clientspreadsheet')));
 
         return (bool) email_to_user(
             $recipient,
@@ -1029,10 +1023,8 @@ class spreadsheet_helper {
         }
 
         $submissionsurl = new \moodle_url('/mod/clientspreadsheet/submissions.php', ['id' => $cm->id]);
-        $subject = get_string('removalnotificationsubject', 'clientspreadsheet', format_string($instance->name));
+        $subject = get_string('removalnotificationsubject', 'clientspreadsheet');
         $data = (object) [
-            'activity' => format_string($instance->name),
-            'course' => format_string($course->fullname),
             'requestedby' => fullname($USER),
             'requestedbyemail' => $USER->email,
             'targetuser' => fullname($targetuser),
@@ -1043,8 +1035,6 @@ class spreadsheet_helper {
 
         $messagetext = get_string('removalnotificationbodytext', 'clientspreadsheet', $data);
         $htmldata = (object) [
-            'activity' => s($data->activity),
-            'course' => s($data->course),
             'requestedby' => s($data->requestedby),
             'requestedbyemail' => s($data->requestedbyemail),
             'targetuser' => s($data->targetuser),
@@ -1054,13 +1044,11 @@ class spreadsheet_helper {
         ];
         $messagehtml = \html_writer::tag('p', get_string('removalnotificationbodyintro', 'clientspreadsheet'))
             . \html_writer::alist([
-                get_string('notificationbodyactivity', 'clientspreadsheet', $htmldata),
-                get_string('notificationbodycourse', 'clientspreadsheet', $htmldata),
                 get_string('removalnotificationbodyrequester', 'clientspreadsheet', $htmldata),
                 get_string('removalnotificationbodytarget', 'clientspreadsheet', $htmldata),
                 get_string('notificationbodytime', 'clientspreadsheet', $htmldata),
             ])
-            . \html_writer::tag('p', \html_writer::link($submissionsurl, get_string('viewsubmissions', 'clientspreadsheet')));
+            . \html_writer::tag('p', \html_writer::link($submissionsurl, get_string('reviewrequest', 'clientspreadsheet')));
 
         return (bool) email_to_user(
             $recipient,
@@ -1074,6 +1062,35 @@ class spreadsheet_helper {
             $USER->email,
             fullname($USER)
         );
+    }
+
+    /**
+     * Builds a short readable summary for addition notifications.
+     *
+     * @param \stdClass $submission Submission record.
+     * @return string
+     */
+    private static function get_submission_request_summary(\stdClass $submission): string {
+        $filename = trim((string) ($submission->filename ?? ''));
+        $items = self::decode_requested_items($submission->requesteditems ?? '');
+        $itemcount = count($items);
+
+        if ($itemcount === 1) {
+            return self::format_requested_item(reset($items));
+        }
+
+        if ($itemcount > 1) {
+            if ($filename !== '') {
+                return get_string('requestsummaryfilecount', 'clientspreadsheet', (object) [
+                    'filename' => $filename,
+                    'count' => $itemcount,
+                ]);
+            }
+
+            return get_string('requestsummaryusercount', 'clientspreadsheet', $itemcount);
+        }
+
+        return $filename !== '' ? $filename : get_string('manualadditionfilename', 'clientspreadsheet');
     }
 
     /**

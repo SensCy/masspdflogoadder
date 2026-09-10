@@ -88,17 +88,16 @@ $string['nousersmatchfilters'] = 'No users or requests match those filters.';
 $string['notificationbodyactivity'] = 'Activity: {$a->activity}';
 $string['notificationbodycourse'] = 'Course: {$a->course}';
 $string['notificationbodyfile'] = 'File: {$a->filename}';
-$string['notificationbodyintro'] = 'A new client spreadsheet has been submitted.';
+$string['notificationbodyintro'] = 'A user addition request was submitted.';
+$string['notificationbodyrequest'] = 'Request: {$a->requestsummary}';
 $string['notificationbodysubmitter'] = 'Submitted by: {$a->submittedby} ({$a->submittedbyemail})';
-$string['notificationbodytext'] = 'A new client spreadsheet has been submitted.
+$string['notificationbodytext'] = 'A user addition request was submitted.
 
-Activity: {$a->activity}
-Course: {$a->course}
 Submitted by: {$a->submittedby} ({$a->submittedbyemail})
-File: {$a->filename}
+Request: {$a->requestsummary}
 Submitted: {$a->submittedtime}
 
-View submissions:
+Review request:
 {$a->url}';
 $string['notificationbodytime'] = 'Submitted: {$a->submittedtime}';
 $string['notificationemail'] = 'Notification admin email';
@@ -106,7 +105,7 @@ $string['notificationemail_help'] = 'Optional. Enter the email address for one a
 $string['notificationemailinvalid'] = 'Enter a valid email address.';
 $string['notificationemailnotadmin'] = 'Enter the email address of an active Moodle site admin user.';
 $string['notificationsettings'] = 'Notifications and retention';
-$string['notificationsubject'] = 'New spreadsheet submission: {$a}';
+$string['notificationsubject'] = 'New user addition request';
 $string['pendingrequests'] = 'Pending requests';
 $string['pendingtablabel'] = 'Pending ({$a})';
 $string['pluginadministration'] = 'Client spreadsheet administration';
@@ -145,20 +144,18 @@ $string['returntocourse'] = 'Return to course';
 $string['reviewedby'] = 'Reviewed by';
 $string['removeafter'] = 'Remove after';
 $string['removalnotallowed'] = 'This user cannot be requested for removal from your cohort.';
-$string['removalnotificationbodyintro'] = 'A new client user deletion request has been submitted.';
+$string['removalnotificationbodyintro'] = 'A user deletion request was submitted.';
 $string['removalnotificationbodyrequester'] = 'Requested by: {$a->requestedby} ({$a->requestedbyemail})';
 $string['removalnotificationbodytarget'] = 'User to remove: {$a->targetuser} ({$a->targetemail})';
-$string['removalnotificationbodytext'] = 'A new client user deletion request has been submitted.
+$string['removalnotificationbodytext'] = 'A user deletion request was submitted.
 
-Activity: {$a->activity}
-Course: {$a->course}
 Requested by: {$a->requestedby} ({$a->requestedbyemail})
 User to remove: {$a->targetuser} ({$a->targetemail})
 Submitted: {$a->submittedtime}
 
-View submissions:
+Review request:
 {$a->url}';
-$string['removalnotificationsubject'] = 'New user deletion request: {$a}';
+$string['removalnotificationsubject'] = 'New user deletion request';
 $string['removalpending'] = 'Removal pending';
 $string['removalrequest'] = 'User deletion';
 $string['removalrequestedheading'] = 'Removal request submitted';
@@ -168,6 +165,9 @@ $string['requestedusers'] = 'Requested users';
 $string['requestedroleformat'] = 'Role: {$a}';
 $string['request'] = 'Request';
 $string['requestuseradditions'] = 'Request user additions';
+$string['requestsummaryfilecount'] = '{$a->filename} ({$a->count} users)';
+$string['requestsummaryusercount'] = '{$a} users';
+$string['reviewrequest'] = 'Review request';
 $string['role'] = 'Role';
 $string['roleadmin'] = 'Admin';
 $string['rolemember'] = 'Member';
