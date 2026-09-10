@@ -12,7 +12,7 @@
 - Validates that the spreadsheet has the required headers, no duplicate headers, at least one data row, and values in required columns.
 - Stores valid submissions for staff review.
 - Shows pending addition and removal requests to users in the same cohort, grouped by requester.
-- Gives clients a confirmation page asking them to allow 24 hours for processing, with one return-to-activity button.
+- Gives clients a confirmation message asking them to allow 48 hours for processing.
 - Sends an optional email notification to one configured Moodle site admin after each valid submission.
 - Lets site admins review user additions and user deletions in clearly labeled split-screen panels.
 - Lets site admins download submitted sheets and mark addition or deletion requests completed after a confirmation step.
